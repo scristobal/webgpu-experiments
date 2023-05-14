@@ -35,23 +35,37 @@ if (!context) {
 
 context.configure({
     device: device,
-    format: canvasFormat,
+    format: canvasFormat
 });
 
 // prepare data
 
+// start with the grid size, since it is constant for each iteration it should be a uniform
+const GRID_SIZE = 4;
+
+// Create a uniform buffer that describes the grid.
+const uniformArray = new Float32Array([GRID_SIZE, GRID_SIZE]);
+
+const uniformBuffer = device.createBuffer({
+    label: 'Grid Uniforms',
+    size: uniformArray.byteLength,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+});
+
+device.queue.writeBuffer(uniformBuffer, 0, uniformArray);
+
 // x, y pairs grouped in points: p1, p2, p3, q1, q2, q3
 // triplets of points grouped in triangles
 const vertices = new Float32Array([
-    -0.8, -0.8, 1, 0, 0, 1, 0.8, -0.8, 0, 1, 0, 1, 0.8, 0.8, 0, 0, 1, 1, -0.8, -0.8, 1, 0, 0, 1,
-    0.8, 0.8, 0, 0, 1, 1, -0.8, 0.8, 1, 1, 0, 1,
+    -0.8, -0.8, 1, 0, 0, 1, 0.8, -0.8, 0, 1, 0, 1, 0.8, 0.8, 0, 0, 1, 1, -0.8, -0.8, 1, 0, 0, 1, 0.8, 0.8, 0, 0, 1, 1,
+    -0.8, 0.8, 1, 1, 0, 1
 ]); // exercise: use Index Buffers to avoid repetition
 
 // copy data into the GPU
 const vertexBuffer = device.createBuffer({
     label: 'Cell vertices',
     size: vertices.byteLength,
-    usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
 });
 // actually moves the data
 device.queue.writeBuffer(vertexBuffer, /*bufferOffset=*/ 0, vertices);
@@ -63,20 +77,22 @@ const vertexBufferLayout = {
         {
             format: 'float32x2' as const,
             offset: 0,
-            shaderLocation: 0, // Position, see vertex shader
+            shaderLocation: 0 // Position, see vertex shader
         },
         {
             shaderLocation: 1, // color
             offset: 2 * 4,
-            format: 'float32x4' as const,
-        },
-    ],
+            format: 'float32x4' as const
+        }
+    ]
 };
 
 // write the shaders
 const cellShaderModule = device.createShaderModule({
     label: 'Cell shader',
     code: /* wgsl */ `
+        @group(0) @binding(0) var<uniform> grid_size: vec2<f32>;
+
         struct VertexOut {
             @builtin(position) position : vec4<f32>,
             @location(0) color : vec4<f32>
@@ -86,7 +102,7 @@ const cellShaderModule = device.createShaderModule({
         fn vertex_main(@location(0) position: vec2<f32>, @location(1) color: vec4<f32>) -> VertexOut
         {
             var output : VertexOut;
-            output.position = vec4<f32>(position, 0, 1);
+            output.position = vec4<f32>(position / grid_size, 0, 1);
             output.color = color;
             return output;
         }
@@ -96,7 +112,7 @@ const cellShaderModule = device.createShaderModule({
         {
             return fragData.color;
         }
-`,
+`
 });
 
 // where the magic happens, combine shaders, data/layout and target
@@ -106,17 +122,29 @@ const cellPipeline = device.createRenderPipeline({
     vertex: {
         module: cellShaderModule,
         entryPoint: 'vertex_main',
-        buffers: [vertexBufferLayout],
+        buffers: [vertexBufferLayout]
     },
     fragment: {
         module: cellShaderModule,
         entryPoint: 'fragment_main',
         targets: [
             {
-                format: canvasFormat,
-            },
-        ],
-    },
+                format: canvasFormat
+            }
+        ]
+    }
+});
+
+// this creates a bind group for our uniform
+const bindGroup = device.createBindGroup({
+    label: 'Cell renderer bind group',
+    layout: cellPipeline.getBindGroupLayout(0),
+    entries: [
+        {
+            binding: 0,
+            resource: { buffer: uniformBuffer }
+        }
+    ]
 });
 
 // send the commands to the GPU
@@ -128,13 +156,15 @@ const pass = encoder.beginRenderPass({
         {
             view: context.getCurrentTexture().createView(),
             loadOp: 'clear',
-            storeOp: 'store',
-        },
-    ],
+            storeOp: 'store'
+        }
+    ]
 });
 
 pass.setPipeline(cellPipeline);
 pass.setVertexBuffer(0, vertexBuffer);
+pass.setBindGroup(0, bindGroup);
+
 pass.draw(vertices.length / (2 + 4)); // 6 vertices
 
 pass.end();

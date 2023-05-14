@@ -1,0 +1,10 @@
+node_modules/
+build/
+.DS_Store
+.eslintcache
+.env*
+.next
+.parcel-cache
+.swc
+dist/
+lib/
