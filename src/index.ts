@@ -41,7 +41,7 @@ context.configure({
 // prepare data
 
 // start with the grid size, since it is constant for each iteration it should be a uniform
-const GRID_SIZE = 4;
+const GRID_SIZE = 16;
 
 // Create a uniform buffer that describes the grid.
 const uniformArray = new Float32Array([GRID_SIZE, GRID_SIZE]);
@@ -93,17 +93,29 @@ const cellShaderModule = device.createShaderModule({
     code: /* wgsl */ `
         @group(0) @binding(0) var<uniform> grid_size: vec2<f32>;
 
+        struct VertexIn {
+            @location(0) position: vec2<f32>,
+            @location(1) color: vec4<f32>,
+            @builtin(instance_index) instance: u32
+        }
+
         struct VertexOut {
             @builtin(position) position : vec4<f32>,
             @location(0) color : vec4<f32>
         }
 
         @vertex
-        fn vertex_main(@location(0) position: vec2<f32>, @location(1) color: vec4<f32>) -> VertexOut
+        fn vertex_main(input: VertexIn) -> VertexOut
         {
             var output : VertexOut;
-            output.position = vec4<f32>(position / grid_size, 0, 1);
-            output.color = color;
+
+            let i = f32(input.instance);
+            let cell = vec2<f32>( i % grid_size.x, floor(i / grid_size.y));
+            let cell_offset = cell / grid_size * 2;
+            let grid_position = (input.position + 1) / grid_size - 1 + cell_offset;
+
+            output.position = vec4<f32>(grid_position, 0, 1);
+            output.color = input.color;
             return output;
         }
 
@@ -165,7 +177,7 @@ pass.setPipeline(cellPipeline);
 pass.setVertexBuffer(0, vertexBuffer);
 pass.setBindGroup(0, bindGroup);
 
-pass.draw(vertices.length / (2 + 4)); // 6 vertices
+pass.draw(vertices.length / (2 + 4), GRID_SIZE * GRID_SIZE); // 6 vertices
 
 pass.end();
 
