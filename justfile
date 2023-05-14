@@ -7,7 +7,7 @@ build:
 serve:
     devserver --reload --address localhost:3000
 watch:
-    watchexec -e ts -- just build
+    watchexec -e ts,mts -- just build
 dev:
     just watch & just serve && kill $!
 
