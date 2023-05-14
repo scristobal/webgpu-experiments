@@ -43,7 +43,8 @@ context.configure({
 // x, y pairs grouped in points: p1, p2, p3, q1, q2, q3
 // triplets of points grouped in triangles
 const vertices = new Float32Array([
-    -0.8, -0.8, 0.8, -0.8, 0.8, 0.8, -0.8, -0.8, 0.8, 0.8, -0.8, 0.8,
+    -0.8, -0.8, 1, 0, 0, 1, 0.8, -0.8, 0, 1, 0, 1, 0.8, 0.8, 0, 0, 1, 1, -0.8, -0.8, 1, 0, 0, 1,
+    0.8, 0.8, 0, 0, 1, 1, -0.8, 0.8, 1, 1, 0, 1,
 ]); // exercise: use Index Buffers to avoid repetition
 
 // copy data into the GPU
@@ -57,12 +58,17 @@ device.queue.writeBuffer(vertexBuffer, /*bufferOffset=*/ 0, vertices);
 
 // tells the GPU how is the data organized
 const vertexBufferLayout = {
-    arrayStride: 8,
+    arrayStride: (2 + 4) * 4,
     attributes: [
         {
             format: 'float32x2' as const,
             offset: 0,
             shaderLocation: 0, // Position, see vertex shader
+        },
+        {
+            shaderLocation: 1, // color
+            offset: 2 * 4,
+            format: 'float32x4' as const,
         },
     ],
 };
@@ -71,17 +77,26 @@ const vertexBufferLayout = {
 const cellShaderModule = device.createShaderModule({
     label: 'Cell shader',
     code: /* wgsl */ `
+        struct VertexOut {
+            @builtin(position) position : vec4<f32>,
+            @location(0) color : vec4<f32>
+        }
+
         @vertex
-        fn vertexMain(@location(0) pos: vec2f) ->
-            @builtin(position) vec4f {
-            return vec4f(pos, 0, 1);
+        fn vertex_main(@location(0) position: vec2<f32>, @location(1) color: vec4<f32>) -> VertexOut
+        {
+            var output : VertexOut;
+            output.position = vec4<f32>(position, 0, 1);
+            output.color = color;
+            return output;
         }
 
         @fragment
-        fn fragmentMain() -> @location(0) vec4f {
-            return vec4f(1, 0, 0, 1);
+        fn fragment_main(fragData: VertexOut) -> @location(0) vec4<f32>
+        {
+            return fragData.color;
         }
-    `,
+`,
 });
 
 // where the magic happens, combine shaders, data/layout and target
@@ -90,12 +105,12 @@ const cellPipeline = device.createRenderPipeline({
     layout: 'auto',
     vertex: {
         module: cellShaderModule,
-        entryPoint: 'vertexMain',
+        entryPoint: 'vertex_main',
         buffers: [vertexBufferLayout],
     },
     fragment: {
         module: cellShaderModule,
-        entryPoint: 'fragmentMain',
+        entryPoint: 'fragment_main',
         targets: [
             {
                 format: canvasFormat,
@@ -120,7 +135,7 @@ const pass = encoder.beginRenderPass({
 
 pass.setPipeline(cellPipeline);
 pass.setVertexBuffer(0, vertexBuffer);
-pass.draw(vertices.length / 2); // 6 vertices
+pass.draw(vertices.length / (2 + 4)); // 6 vertices
 
 pass.end();
 
@@ -129,3 +144,5 @@ const commandBuffer = encoder.finish();
 device.queue.submit([commandBuffer]);
 
 // device.queue.submit([encoder.finish()]);
+
+// follow up https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API

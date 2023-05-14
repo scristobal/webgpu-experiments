@@ -8,6 +8,8 @@ serve:
     devserver --reload --address localhost:3000
 watch:
     watchexec -e ts,mts -- just build
-dev:
+dev: code
     just watch & just serve && kill $!
 
+code:
+    code .

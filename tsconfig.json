@@ -35,6 +35,6 @@
             "@/*": ["./src/*"]
         }
     },
-    "include": ["**/*.ts"],
+    "include": ["**/*.ts", "src/index.js"],
     "exclude": ["src/**/*.test.ts", "node_modules", "lib"]
 }

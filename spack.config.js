@@ -8,7 +8,7 @@ module.exports = config({
     },
     output: {
         path: __dirname + '/lib',
-        name: 'index.js',
+        name: 'index.mjs',
     },
     module: {},
 });
