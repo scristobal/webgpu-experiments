@@ -48,14 +48,14 @@ pub fn run() {
         &wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::default(),
             compatible_surface: Some(&surface),
-            force_fallback_adapter: true,
+            force_fallback_adapter: false,
         }
     );
 
     let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
         power_preference: wgpu::PowerPreference::default(),
         compatible_surface: Some(&surface),
-        force_fallback_adapter: true,
+        force_fallback_adapter: false,
     }))
     .unwrap();
 
