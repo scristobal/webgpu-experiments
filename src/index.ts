@@ -357,7 +357,9 @@ const updateGrid = () => {
      */
     const computePass = encoder.beginComputePass();
 
-    computePass.setPipeline(simulationPipeline), computePass.setBindGroup(0, bindGroups[step % 2 == 0 ? 1 : 0]);
+    computePass.setPipeline(simulationPipeline);
+
+    computePass.setBindGroup(0, bindGroups[step % 2 == 0 ? 1 : 0]);
 
     computePass.dispatchWorkgroups(workgroupCount, workgroupCount);
 
@@ -366,10 +368,13 @@ const updateGrid = () => {
     /**
      * Start  render pass
      */
+
+    const view = context.getCurrentTexture().createView();
+
     const renderPass = encoder.beginRenderPass({
         colorAttachments: [
             {
-                view: context.getCurrentTexture().createView(),
+                view,
                 loadOp: 'clear', // defaults to black
                 storeOp: 'store'
             }
