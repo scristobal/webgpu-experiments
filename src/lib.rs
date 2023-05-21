@@ -1,3 +1,5 @@
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
 use wgpu::InstanceDescriptor;
 use winit::{
     event::*,
@@ -5,20 +7,55 @@ use winit::{
     window::WindowBuilder,
 };
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub fn run() {
-    env_logger::init();
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+            std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+            console_log::init_with_level(log::Level::Warn).expect("Couldn't initialize logger");
+        } else {
+            env_logger::init();
+        }
+    }
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        // Winit prevents sizing with CSS
+        use winit::dpi::PhysicalSize;
+        window.set_inner_size(PhysicalSize::new(512, 512));
+
+        use winit::platform::web::WindowExtWebSys;
+        web_sys::window()
+            .and_then(|win| win.document())
+            .and_then(|doc| {
+                let dst = doc.get_element_by_id("wasm-example")?;
+                let canvas = web_sys::Element::from(window.canvas());
+                dst.append_child(&canvas).ok()?;
+                Some(())
+            })
+            .expect("Couldn't append canvas to document body.");
+    }
 
     let instance = wgpu::Instance::new(InstanceDescriptor::default());
 
     let surface = unsafe { instance.create_surface(&window) }.unwrap();
 
+    log::warn!(
+        "{:?}",
+        &wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::default(),
+            compatible_surface: Some(&surface),
+            force_fallback_adapter: true,
+        }
+    );
+
     let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
         power_preference: wgpu::PowerPreference::default(),
         compatible_surface: Some(&surface),
-        force_fallback_adapter: false,
+        force_fallback_adapter: true,
     }))
     .unwrap();
 

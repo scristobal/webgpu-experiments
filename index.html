@@ -7,9 +7,13 @@
     <title>WebGPU Life</title>
 </head>
 
-<body style="background-color:hwb(0 22% 78%);">
-    <script src="lib/index.mjs" type="module"></script>
-    <canvas width="1024" height="1024"></canvas>
+<body style="background-color:hwb(0 22% 78%);" id="wasm-example">
+    <!-- <script src="lib/index.mjs" type="module"></script> -->
+    <canvas width="512" height="512"></canvas>
+    <script type="module">
+        import init from "./bin/wgpu_intro.js";
+        init().then( () => console.log( "WASM Loaded" ) );
+    </script>
 </body>
 
 </html>
