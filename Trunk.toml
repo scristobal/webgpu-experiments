@@ -1,0 +1,13 @@
+
+
+[serve]
+port = 3000
+open = true
+
+
+[clean]
+cargo = true
+
+[tools]
+wasm_bindgen = "0.2.86"
+
