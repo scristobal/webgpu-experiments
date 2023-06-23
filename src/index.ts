@@ -12,7 +12,7 @@
  *
  */
 
-// get GPU device
+// get adapter
 if (!navigator.gpu) {
     throw new Error('WebGPU not supported on this browser.');
 }
@@ -23,6 +23,7 @@ if (!adapter) {
     throw new Error('No appropriate GPUAdapter found.');
 }
 
+// use adapter to get device
 const device = await adapter.requestDevice();
 
 // attach device to html canvas
@@ -45,25 +46,20 @@ context.configure({
     format: canvasFormat
 });
 
-/**
- *
- * Data preparation, vertex (?) uniforms and storage buffers
- *
- */
-
+// Data preparation, grid size on both axis
 const GRID_SIZE_X = canvas.width / 8;
 const GRID_SIZE_Y = canvas.height / 8;
 
 // this represents the size of the board, since
 // it is constant for each iteration it should be a uniform
-const uniformArray = new Float32Array([GRID_SIZE_X, GRID_SIZE_Y]);
+const gridSizeArray = new Float32Array([GRID_SIZE_X, GRID_SIZE_Y]);
 
-const uniformBuffer = device.createBuffer({
+const gridSizeBuffer = device.createBuffer({
     label: 'Grid Uniforms',
-    size: uniformArray.byteLength,
+    size: gridSizeArray.byteLength,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
 });
-device.queue.writeBuffer(uniformBuffer, 0, uniformArray);
+device.queue.writeBuffer(gridSizeBuffer, 0, gridSizeArray);
 
 // This represent the cell state using two buffers
 // in each iteration one buffer will be used for
@@ -84,7 +80,7 @@ const cellStateStorage: [GPUBuffer, GPUBuffer] = [
 ];
 
 // initialization
-for (let i = 0; i < cellStateArray.length; i += 3) {
+for (let i = 0; i < cellStateArray.length; i++) {
     cellStateArray[i] = Math.random() > 0.5 ? 1 : 0;
 }
 device.queue.writeBuffer(cellStateStorage[0], 0, cellStateArray);
@@ -98,8 +94,7 @@ device.queue.writeBuffer(cellStateStorage[0], 0, cellStateArray);
 // x, y pairs grouped in points: p1, p2, p3, q1, q2, q3
 // triplets of points grouped in triangles
 const vertices = new Float32Array([
-    -0.8, -0.8, 0, 0, 0, 1, 0.8, -0.8, 0, 0, 0, 1, 0.8, 0.8, 0, 0, 0, 1, -0.8, -0.8, 0, 0, 0, 1, 0.8, 0.8, 0, 0, 0, 1,
-    -0.8, 0.8, 0, 0, 0, 1
+    -1, -1, 0, 0, 0, 1, 1, -1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, -1, -1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, -1, 1, 0, 0, 0, 1
 ]); // exercise: use Index Buffers to avoid repetition
 
 // copy data into the GPU
@@ -155,13 +150,14 @@ const cellShaderModule = device.createShaderModule({
         fn vertex_main(input: VertexIn) -> VertexOut
         {
             var output : VertexOut;
+            var scale : f32 = 0.9;
 
             let state = f32(cell_state[input.instance]);
 
             let i = f32(input.instance);
             let cell = vec2<f32>( i % grid_size.x, floor(i / grid_size.y));
 
-            let cell_offset = cell / grid_size * 2;
+            let cell_offset = cell / (scale * grid_size) * 2 ;
             let grid_position = (input.position*state + 1) / grid_size - 1 + cell_offset;
 
             output.position = vec4<f32>(grid_position, 0, 1);
@@ -274,7 +270,7 @@ const bindGroups: [GPUBindGroup, GPUBindGroup] = [
         entries: [
             {
                 binding: 0,
-                resource: { buffer: uniformBuffer }
+                resource: { buffer: gridSizeBuffer }
             },
             {
                 binding: 1,
@@ -292,7 +288,7 @@ const bindGroups: [GPUBindGroup, GPUBindGroup] = [
         entries: [
             {
                 binding: 0,
-                resource: { buffer: uniformBuffer }
+                resource: { buffer: gridSizeBuffer }
             },
             {
                 binding: 1,
