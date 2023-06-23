@@ -35,7 +35,7 @@ if (!canvas) {
 }
 
 const viewRatio = window.innerWidth / window.innerHeight;
-canvas.height = canvas.width * viewRatio;
+canvas.width = canvas.height * viewRatio;
 
 const context = canvas.getContext('webgpu');
 
