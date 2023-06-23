@@ -34,9 +34,6 @@ if (!canvas) {
     throw new Error('No canvas found.');
 }
 
-const viewRatio = window.innerWidth / window.innerHeight;
-canvas.width = canvas.height * viewRatio;
-
 const context = canvas.getContext('webgpu');
 
 if (!context) {
@@ -54,8 +51,8 @@ context.configure({
  *
  */
 
-const GRID_SIZE_X = canvas.width;
-const GRID_SIZE_Y = canvas.height;
+const GRID_SIZE_X = canvas.width / 8;
+const GRID_SIZE_Y = canvas.height / 8;
 
 // this represents the size of the board, since
 // it is constant for each iteration it should be a uniform
@@ -182,7 +179,7 @@ const cellShaderModule = device.createShaderModule({
 
 // in this case arbitrary, in general same workgroup can share memory and synchronize
 // rule of thumb is size of 64, in this case 8*8
-const WORKGROUP_SIZE = 8;
+const WORKGROUP_SIZE = 16;
 
 // used later in the render loop
 const workgroupCount = Math.ceil(GRID_SIZE_X / WORKGROUP_SIZE);
@@ -348,6 +345,9 @@ const simulationPipeline = device.createComputePipeline({
  *
  *  */
 
+const renderTimes = new Float32Array(100);
+let lastRenderTime = performance.now();
+
 const updateGrid = () => {
     step++;
     /**
@@ -397,6 +397,14 @@ const updateGrid = () => {
     const commandBuffer = encoder.finish();
 
     device.queue.submit([commandBuffer]);
+
+    renderTimes[step % renderTimes.length] = performance.now() - lastRenderTime;
+    lastRenderTime = performance.now();
+
+    if (step % renderTimes.length === 0) {
+        const averageRenderTime = renderTimes.reduce((a, b) => a + b) / renderTimes.length;
+        console.log('average fps', 1000 / averageRenderTime);
+    }
 
     /**
      * Schedule next frame
