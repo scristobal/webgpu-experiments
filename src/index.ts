@@ -34,6 +34,9 @@ if (!canvas) {
     throw new Error('No canvas found.');
 }
 
+const viewRatio = window.innerWidth / window.innerHeight;
+canvas.height = canvas.width * viewRatio;
+
 const context = canvas.getContext('webgpu');
 
 if (!context) {
@@ -51,8 +54,8 @@ context.configure({
  *
  */
 
-const GRID_SIZE_X = 64;
-const GRID_SIZE_Y = 64;
+const GRID_SIZE_X = canvas.width;
+const GRID_SIZE_Y = canvas.height;
 
 // this represents the size of the board, since
 // it is constant for each iteration it should be a uniform
@@ -98,8 +101,8 @@ device.queue.writeBuffer(cellStateStorage[0], 0, cellStateArray);
 // x, y pairs grouped in points: p1, p2, p3, q1, q2, q3
 // triplets of points grouped in triangles
 const vertices = new Float32Array([
-    -0.8, -0.8, 1, 0, 0, 1, 0.8, -0.8, 0, 1, 0, 1, 0.8, 0.8, 0, 0, 1, 1, -0.8, -0.8, 1, 0, 0, 1, 0.8, 0.8, 0, 0, 1, 1,
-    -0.8, 0.8, 1, 1, 0, 1
+    -0.8, -0.8, 0, 0, 0, 1, 0.8, -0.8, 0, 0, 0, 1, 0.8, 0.8, 0, 0, 0, 1, -0.8, -0.8, 0, 0, 0, 1, 0.8, 0.8, 0, 0, 0, 1,
+    -0.8, 0.8, 0, 0, 0, 1
 ]); // exercise: use Index Buffers to avoid repetition
 
 // copy data into the GPU
@@ -376,6 +379,7 @@ const updateGrid = () => {
             {
                 view,
                 loadOp: 'clear', // defaults to black
+                clearValue: { r: 1, g: 1, b: 1, a: 1 },
                 storeOp: 'store'
             }
         ]
