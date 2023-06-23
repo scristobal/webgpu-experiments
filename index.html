@@ -13,22 +13,26 @@
         }
 
         canvas {
-            width: 100vw;
-            height: 100dvh;
-            display: block;
+            image-rendering: pixelated;
+        }
+
+        /* https://bugs.chromium.org/p/chromium/issues/detail?id=993762 */
+        /* https://stackoverflow.com/questions/69867152/how-to-disable-filtering-on-canvas-with-webgpu-context */
+        .pixelated_fixed {
+            animation: fix-image-rendering-bug .0001s;
+        }
+
+        @keyframes fix-image-rendering-bug {
+            to {
+                opacity: 1;
+            }
         }
     </style>
     <script src="src/index.ts" type="module"></script>
-
 </head>
 
 <body>
-
-    <canvas width="2048" height="2048"></canvas>
-    <!-- <script type="module">
-        import init from "./bin/wgpu_intro.js";
-        init().then( () => console.log( "WASM Loaded" ) );
-    </script> -->
+    <canvas class="pixelated_fixed" height="512" width="512"> </canvas>
 </body>
 
 </html>
