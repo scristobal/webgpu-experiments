@@ -47,8 +47,8 @@ context.configure({
 });
 
 // Data preparation, grid size on both axis
-const GRID_SIZE_X = canvas.width / 8;
-const GRID_SIZE_Y = canvas.height / 8;
+const GRID_SIZE_X = canvas.width / 4;
+const GRID_SIZE_Y = canvas.height / 4;
 
 // this represents the size of the board, since
 // it is constant for each iteration it should be a uniform
@@ -61,7 +61,7 @@ const gridSizeBuffer = device.createBuffer({
 });
 device.queue.writeBuffer(gridSizeBuffer, 0, gridSizeArray);
 
-const scaleArray = new Float32Array([0.5]);
+const scaleArray = new Float32Array([0.9]);
 
 const scaleBuffer = device.createBuffer({
     label: 'Scale uniform',
@@ -165,7 +165,7 @@ const cellShaderModule = device.createShaderModule({
             let state = f32(cell_state[input.instance]);
 
             let i = f32(input.instance);
-            let cell = vec2<f32>( i % grid_size.x, floor(i / grid_size.y));
+            let cell = vec2<f32>( i % grid_size.x, floor(i / grid_size.x));
 
             let cell_offset = cell / (scale * grid_size) * 2 ;
             let grid_position = (input.position*state + 1) / grid_size - 1 + cell_offset;
