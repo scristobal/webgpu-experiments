@@ -61,6 +61,15 @@ const gridSizeBuffer = device.createBuffer({
 });
 device.queue.writeBuffer(gridSizeBuffer, 0, gridSizeArray);
 
+const scaleArray = new Float32Array([0.5]);
+
+const scaleBuffer = device.createBuffer({
+    label: 'Scale uniform',
+    size: scaleArray.byteLength,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+});
+device.queue.writeBuffer(scaleBuffer, 0, scaleArray);
+
 // This represent the cell state using two buffers
 // in each iteration one buffer will be used for
 // drawing and the other for computing the next state
@@ -133,7 +142,8 @@ const cellShaderModule = device.createShaderModule({
     label: 'Cell shader',
     code: /* wgsl */ `
         @group(0) @binding(0) var<uniform> grid_size: vec2<f32>;
-        @group(0) @binding(1) var<storage> cell_state: array<u32>;
+        @group(0) @binding(1) var<uniform> scale: f32;
+        @group(0) @binding(2) var<storage> cell_state: array<u32>;
 
         struct VertexIn {
             @location(0) position: vec2<f32>,
@@ -150,7 +160,7 @@ const cellShaderModule = device.createShaderModule({
         fn vertex_main(input: VertexIn) -> VertexOut
         {
             var output : VertexOut;
-            var scale : f32 = 0.9;
+
 
             let state = f32(cell_state[input.instance]);
 
@@ -186,8 +196,8 @@ const simulationShaderModule = device.createShaderModule({
     code: /* wgsl */ `
         @group(0) @binding(0) var<uniform> grid_size: vec2<f32>;
 
-        @group(0) @binding(1) var<storage> cell_state_in: array<u32>;
-        @group(0) @binding(2) var<storage, read_write> cell_state_out: array<u32>;
+        @group(0) @binding(2) var<storage> cell_state_in: array<u32>;
+        @group(0) @binding(3) var<storage, read_write> cell_state_out: array<u32>;
 
 
 
@@ -252,11 +262,16 @@ const bindGroupLayout = device.createBindGroupLayout({
         },
         {
             binding: 1,
+            visibility: GPUShaderStage.VERTEX,
+            buffer: {}
+        },
+        {
+            binding: 2,
             visibility: GPUShaderStage.VERTEX | GPUShaderStage.COMPUTE,
             buffer: { type: 'read-only-storage' } // Cell state input buffer
         },
         {
-            binding: 2,
+            binding: 3,
             visibility: GPUShaderStage.COMPUTE,
             buffer: { type: 'storage' } // Cell state output buffer
         }
@@ -274,10 +289,14 @@ const bindGroups: [GPUBindGroup, GPUBindGroup] = [
             },
             {
                 binding: 1,
-                resource: { buffer: cellStateStorage[0] }
+                resource: { buffer: scaleBuffer }
             },
             {
                 binding: 2,
+                resource: { buffer: cellStateStorage[0] }
+            },
+            {
+                binding: 3,
                 resource: { buffer: cellStateStorage[1] }
             }
         ]
@@ -292,10 +311,14 @@ const bindGroups: [GPUBindGroup, GPUBindGroup] = [
             },
             {
                 binding: 1,
-                resource: { buffer: cellStateStorage[1] }
+                resource: { buffer: scaleBuffer }
             },
             {
                 binding: 2,
+                resource: { buffer: cellStateStorage[1] }
+            },
+            {
+                binding: 3,
                 resource: { buffer: cellStateStorage[0] }
             }
         ]
