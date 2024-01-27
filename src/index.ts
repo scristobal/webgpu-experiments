@@ -286,36 +286,35 @@ const gridBindGroup = device.createBindGroup({
     ]
 });
 
-const cellBindGroups: [GPUBindGroup, GPUBindGroup] = [
-    device.createBindGroup({
-        label: 'Cell renderer bind group A',
-        layout: cellBindGroupLayout,
-        entries: [
-            {
-                binding: 0,
-                resource: { buffer: cellStateStorage[0] }
-            },
-            {
-                binding: 1,
-                resource: { buffer: cellStateStorage[1] }
-            }
-        ]
-    }),
-    device.createBindGroup({
-        label: 'Cell renderer bind group B',
-        layout: cellBindGroupLayout,
-        entries: [
-            {
-                binding: 0,
-                resource: { buffer: cellStateStorage[1] }
-            },
-            {
-                binding: 1,
-                resource: { buffer: cellStateStorage[0] }
-            }
-        ]
-    })
-];
+const cellBindGroup: GPUBindGroup = device.createBindGroup({
+    label: 'Cell renderer bind group A',
+    layout: cellBindGroupLayout,
+    entries: [
+        {
+            binding: 0,
+            resource: { buffer: cellStateStorage[0] }
+        },
+        {
+            binding: 1,
+            resource: { buffer: cellStateStorage[1] }
+        }
+    ]
+});
+
+const cellBindGroupSwapped: GPUBindGroup = device.createBindGroup({
+    label: 'Cell renderer bind group B',
+    layout: cellBindGroupLayout,
+    entries: [
+        {
+            binding: 0,
+            resource: { buffer: cellStateStorage[1] }
+        },
+        {
+            binding: 1,
+            resource: { buffer: cellStateStorage[0] }
+        }
+    ]
+});
 
 const pipelineLayout = device.createPipelineLayout({
     label: 'Cell Pipeline Layout',
@@ -352,28 +351,30 @@ const simulationPipeline = device.createComputePipeline({
 
 // Render loop
 
-const renderTimes = new Float32Array(100);
-let lastRenderTime = performance.now();
-
 const updateGrid = () => {
-    step++;
-    // Start encoder
+    // each update `cellBindGroup` and `cellBindGroupSwapped` must be swapped,
+    // the former is used to compute the new state and the other is used to render
+    // this variable helps keep track of how groups were used on last iteration
+    const cellComputeGroup = even_pass ? cellBindGroup : cellBindGroupSwapped;
+    const cellRenderGroup = even_pass ? cellBindGroupSwapped : cellBindGroup;
+    even_pass = !even_pass;
+
+    // a new encoder is required every update
     const encoder = device.createCommandEncoder();
 
-    // Start simulation pass
+    // set up the simulation pass
     const computePass = encoder.beginComputePass();
 
     computePass.setPipeline(simulationPipeline);
+
     computePass.setBindGroup(0, gridBindGroup);
+    computePass.setBindGroup(1, cellComputeGroup);
 
-    computePass.setBindGroup(1, cellBindGroups[step % 2 == 0 ? 1 : 0]);
-
-    computePass.dispatchWorkgroups(workgroupCount, workgroupCount);
+    computePass.dispatchWorkgroups(workgroupCount, workgroupCount); // <- equivalent of draw for render passes
 
     computePass.end();
 
-    // Start  render pass
-
+    // set up the rendering pass requires a new view on the current texture
     const view = context.getCurrentTexture().createView();
 
     const renderPass = encoder.beginRenderPass({
@@ -392,29 +393,21 @@ const updateGrid = () => {
     renderPass.setVertexBuffer(0, vertexBuffer);
 
     renderPass.setBindGroup(0, gridBindGroup);
-    renderPass.setBindGroup(1, cellBindGroups[step % 2 == 1 ? 1 : 0]); // TS can't check 0 <= step % 2 <= 1
+    renderPass.setBindGroup(1, cellRenderGroup);
 
     renderPass.draw(vertices.length / (2 + 4), GRID_SIZE_X * GRID_SIZE_Y);
 
     renderPass.end();
 
+    // finish and submit
     const commandBuffer = encoder.finish();
-
     device.queue.submit([commandBuffer]);
-
-    renderTimes[step % renderTimes.length] = performance.now() - lastRenderTime;
-    lastRenderTime = performance.now();
-
-    if (step % renderTimes.length === 0) {
-        const averageRenderTime = renderTimes.reduce((a, b) => a + b) / renderTimes.length;
-        console.log('average fps', 1000 / averageRenderTime);
-    }
 
     // Schedule next frame
     requestAnimationFrame(updateGrid);
 };
 
-let step = 0;
+let even_pass = true;
 requestAnimationFrame(updateGrid);
 
 // follow up https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API
