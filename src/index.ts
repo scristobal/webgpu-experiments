@@ -109,18 +109,18 @@ const vertexBuffer = device.createBuffer({
 device.queue.writeBuffer(vertexBuffer, /*bufferOffset=*/ 0, vertices);
 
 // tells the GPU how is the data organized
-const vertexBufferLayout = {
-    arrayStride: /* 2 floats per point */ (2 + /* 4 floats per color */ 4) * /* 4 bytes per float */ 4,
+const vertexBufferLayout: GPUVertexBufferLayout = {
+    arrayStride: 2 * 4 + 4 * 4, // <- this needs to match the sum of sizes of each attribute's format
     attributes: [
         {
-            format: 'float32x2' as const,
-            offset: 0,
-            shaderLocation: 0 // Position, see vertex shader
+            shaderLocation: 0, // Position, used inside `Cell shader` as `@location(0) position: vec2<f32>`
+            format: 'float32x2' as const, // size is 2*4 bytes
+            offset: 0
         },
         {
-            shaderLocation: 1, // color
-            offset: 2 * 4,
-            format: 'float32x4' as const
+            shaderLocation: 1, // Color, used inside `Cell shader` as
+            format: 'float32x4' as const, // size is 4*4 bytes as `@location(1) color: vec4<f32>`
+            offset: 2 * 4 // <- this should mach the size of the previous attribute(s)
         }
     ]
 };
@@ -276,7 +276,7 @@ const gridBindGroup = device.createBindGroup({
     layout: gridBindGroupLayout,
     entries: [
         {
-            binding: 0,
+            binding: 0, // <- this will be the binding for whatever group is assigned later, eg. `@group(0) @binding(0) var<uniform> grid_size: vec2<f32>;`
             resource: { buffer: gridSizeBuffer }
         },
         {
@@ -319,7 +319,7 @@ const cellBindGroups: [GPUBindGroup, GPUBindGroup] = [
 
 const pipelineLayout = device.createPipelineLayout({
     label: 'Cell Pipeline Layout',
-    bindGroupLayouts: [gridBindGroupLayout, cellBindGroupLayout]
+    bindGroupLayouts: [gridBindGroupLayout, cellBindGroupLayout] // <- group 0 is grid, group 1 is cells, eg. ` @group(1) @binding(0) var<storage> cell_state: array<u32>;`
 });
 
 const cellPipeline = device.createRenderPipeline({
@@ -418,3 +418,5 @@ let step = 0;
 requestAnimationFrame(updateGrid);
 
 // follow up https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API
+
+export {};
