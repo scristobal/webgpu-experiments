@@ -1,16 +1,10 @@
-/**
- * Sample GPU app from Google's I/O 2023
- * https://codelabs.developers.google.com/your-first-webgpu-app
- *
- * Samuel Cristobal, May 2023
- */
+// Adapted from sample GPU app from Google's I/O 2023
+// https://codelabs.developers.google.com/your-first-webgpu-app
 
-/**
- *
- * Initialization and checks
- *
- *
- */
+const version = import.meta.env.VITE_APP_VERSION;
+console.log(`Using version ${version}`);
+
+// Initialization and checks
 
 // get adapter
 if (!navigator.gpu) {
@@ -131,11 +125,7 @@ const vertexBufferLayout = {
     ]
 };
 
-/**
- *
- * Cell drawing shaders
- *
- */
+// Cell drawing shaders
 
 // this shaders are used to render the board
 const cellShaderModule = device.createShaderModule({
@@ -245,12 +235,8 @@ const simulationShaderModule = device.createShaderModule({
     `
 });
 
-/**
- *
- * Glueing all together in a pipeline
- *
- * where the magic happens, combine shaders, data/layout and target
- */
+// Glueing all together in a pipeline, this is were
+// the magic happens, combine shaders, data/layout and target
 
 // this creates a bind group for our uniforms
 const gridBindGroupLayout = device.createBindGroupLayout({
@@ -364,25 +350,17 @@ const simulationPipeline = device.createComputePipeline({
     }
 });
 
-/**
- *
- * Render loop
- *
- *  */
+// Render loop
 
 const renderTimes = new Float32Array(100);
 let lastRenderTime = performance.now();
 
 const updateGrid = () => {
     step++;
-    /**
-     * Start encoder
-     * */
+    // Start encoder
     const encoder = device.createCommandEncoder();
 
-    /**
-     * Start simulation pass
-     */
+    // Start simulation pass
     const computePass = encoder.beginComputePass();
 
     computePass.setPipeline(simulationPipeline);
@@ -394,9 +372,7 @@ const updateGrid = () => {
 
     computePass.end();
 
-    /**
-     * Start  render pass
-     */
+    // Start  render pass
 
     const view = context.getCurrentTexture().createView();
 
@@ -434,9 +410,7 @@ const updateGrid = () => {
         console.log('average fps', 1000 / averageRenderTime);
     }
 
-    /**
-     * Schedule next frame
-     */
+    // Schedule next frame
     requestAnimationFrame(updateGrid);
 };
 
