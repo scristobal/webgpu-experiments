@@ -1,38 +1,36 @@
 <!doctype html>
 
 <html>
-
-<head>
-    <meta charset="utf-8">
-    <title>WebGPU Life</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-        }
-
-        canvas {
-            image-rendering: pixelated;
-        }
-
-        /* https://bugs.chromium.org/p/chromium/issues/detail?id=993762 */
-        /* https://stackoverflow.com/questions/69867152/how-to-disable-filtering-on-canvas-with-webgpu-context */
-        .pixelated_fixed {
-            animation: fix-image-rendering-bug .0001s;
-        }
-
-        @keyframes fix-image-rendering-bug {
-            to {
-                opacity: 1;
+    <head>
+        <meta charset="utf-8" />
+        <title>WebGPU Life</title>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
             }
-        }
-    </style>
-    <script src="src/index.ts" type="module"></script>
-</head>
 
-<body>
-    <canvas class="pixelated_fixed" height="512" width="512"> </canvas>
-</body>
+            canvas {
+                image-rendering: pixelated;
+            }
 
+            /* https://bugs.chromium.org/p/chromium/issues/detail?id=993762 */
+            /* https://stackoverflow.com/questions/69867152/how-to-disable-filtering-on-canvas-with-webgpu-context */
+            .pixelated_fixed {
+                animation: fix-image-rendering-bug 0.0001s;
+            }
+
+            @keyframes fix-image-rendering-bug {
+                to {
+                    opacity: 1;
+                }
+            }
+        </style>
+        <script src="src/index.ts" type="module"></script>
+    </head>
+
+    <body>
+        <canvas class="pixelated_fixed"> </canvas>
+    </body>
 </html>

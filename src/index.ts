@@ -29,6 +29,9 @@ if (!canvas) {
     throw new Error('No canvas found.');
 }
 
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
 const context = canvas.getContext('webgpu');
 
 if (!context) {
@@ -41,8 +44,8 @@ context.configure({
 });
 
 // Data preparation, grid size on both axis
-const GRID_SIZE_X = canvas.width / 4;
-const GRID_SIZE_Y = canvas.height / 4;
+const GRID_SIZE_X = canvas.width;
+const GRID_SIZE_Y = canvas.height;
 
 // this represents the size of the board, since
 // it is constant for each iteration it should be a uniform
@@ -54,15 +57,6 @@ const gridSizeBuffer = device.createBuffer({
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
 });
 device.queue.writeBuffer(gridSizeBuffer, 0, gridSizeArray);
-
-const scaleArray = new Float32Array([0.9]);
-
-const scaleBuffer = device.createBuffer({
-    label: 'Scale uniform',
-    size: scaleArray.byteLength,
-    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-});
-device.queue.writeBuffer(scaleBuffer, 0, scaleArray);
 
 // This represent the cell state using two buffers
 // in each iteration one buffer will be used for
@@ -132,8 +126,6 @@ const cellShaderModule = device.createShaderModule({
     label: 'Cell shader',
     code: /* wgsl */ `
         @group(0) @binding(0) var<uniform> grid_size: vec2<f32>;
-        @group(0) @binding(1) var<uniform> scale: f32;
-
         @group(1) @binding(0) var<storage> cell_state: array<u32>;
 
         struct VertexIn {
@@ -152,13 +144,12 @@ const cellShaderModule = device.createShaderModule({
         {
             var output : VertexOut;
 
-
             let state = f32(cell_state[input.instance]);
 
             let i = f32(input.instance);
             let cell = vec2<f32>( i % grid_size.x, floor(i / grid_size.x));
 
-            let cell_offset = cell / (scale * grid_size) * 2 ;
+            let cell_offset = cell / ( grid_size) * 2 ;
             let grid_position = (input.position*state + 1) / grid_size - 1 + cell_offset;
 
             output.position = vec4<f32>(grid_position, 0, 1);
@@ -245,11 +236,6 @@ const gridBindGroupLayout = device.createBindGroupLayout({
         {
             binding: 0,
             visibility: GPUShaderStage.VERTEX | GPUShaderStage.COMPUTE,
-            buffer: {} // Grid uniform buffer
-        },
-        {
-            binding: 1,
-            visibility: GPUShaderStage.VERTEX,
             buffer: {}
         }
     ]
@@ -278,10 +264,6 @@ const gridBindGroup = device.createBindGroup({
         {
             binding: 0, // <- this will be the binding for whatever group is assigned later, eg. `@group(0) @binding(0) var<uniform> grid_size: vec2<f32>;`
             resource: { buffer: gridSizeBuffer }
-        },
-        {
-            binding: 1,
-            resource: { buffer: scaleBuffer }
         }
     ]
 });
