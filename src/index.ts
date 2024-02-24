@@ -112,8 +112,8 @@ const vertexBufferLayout: GPUVertexBufferLayout = {
             offset: 0
         },
         {
-            shaderLocation: 1, // Color, used inside `Cell shader` as
-            format: 'float32x4' as const, // size is 4*4 bytes as `@location(1) color: vec4<f32>`
+            shaderLocation: 1, // Color, used inside `Cell shader` as `@location(1) color: vec4<f32>`
+            format: 'float32x4' as const, // size is 4*4 bytes
             offset: 2 * 4 // <- this should mach the size of the previous attribute(s)
         }
     ]
