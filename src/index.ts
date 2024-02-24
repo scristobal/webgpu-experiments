@@ -51,7 +51,7 @@ const GRID_SIZE_Y = canvas.height;
 // it is constant for each iteration it should be a uniform
 const gridSizeArray = new Float32Array([GRID_SIZE_X, GRID_SIZE_Y]);
 
-const gridSizeBuffer = device.createBuffer({
+const gridSizeBuffer: GPUBuffer = device.createBuffer({
     label: 'Grid Uniforms',
     size: gridSizeArray.byteLength,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
@@ -76,26 +76,28 @@ const cellStateStorage: [GPUBuffer, GPUBuffer] = [
     })
 ];
 
-// initialization
+// initialization, no need to initialize cellStateStorage[1] as it will overwritten on first iteration
 for (let i = 0; i < cellStateArray.length; i++) {
     cellStateArray[i] = Math.random() > 0.5 ? 1 : 0;
 }
 device.queue.writeBuffer(cellStateStorage[0], 0, cellStateArray);
 
-// for (let i = 0; i < cellStateArray.length; i += 3) {
-//     cellStateArray[i] = Math.random() > 0.5 ? 1 : 0;
-// }
-// device.queue.writeBuffer(cellStateStorage[1], 0, cellStateArray);
+// a vertex array to represent a square as 2 triangles
+// arranged as triplets of points grouped in two triangles
+// each point has two coords follow by 4 floats representing the color:x, y, r, g, b ,a
 
-// finally a vertex array to represent a square as 2 triangles
-// x, y pairs grouped in points: p1, p2, p3, q1, q2, q3
-// triplets of points grouped in triangles
+// prettier-ignore
 const vertices = new Float32Array([
-    -1, -1, 0, 0, 0, 1, 1, -1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, -1, -1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, -1, 1, 0, 0, 0, 1
+    -1, -1,    0, 0, 0, 1,
+     1, -1,    0, 0, 0, 1,
+     1,  1,    0, 0, 0, 1,
+    -1, -1,    0, 0, 0, 1,
+     1,  1,    0, 0, 0, 1,
+    -1,  1,    0, 0, 0, 1
 ]); // exercise: use Index Buffers to avoid repetition
 
 // copy data into the GPU
-const vertexBuffer = device.createBuffer({
+const vertexBuffer: GPUBuffer = device.createBuffer({
     label: 'Cell vertices',
     size: vertices.byteLength,
     usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
@@ -136,7 +138,7 @@ const cellShaderModule = device.createShaderModule({
 
         struct VertexOut {
             @builtin(position) position : vec4<f32>,
-            @location(0) color : vec4<f32>
+            @location(1) color : vec4<f32>
         }
 
         @vertex
@@ -180,8 +182,6 @@ const simulationShaderModule = device.createShaderModule({
 
         @group(1) @binding(0) var<storage> cell_state_in: array<u32>;
         @group(1) @binding(1) var<storage, read_write> cell_state_out: array<u32>;
-
-
 
         fn cell_index(cell: vec2u) -> u32 {
             return (cell.y % u32(grid_size.y)) * u32(grid_size.x) + (cell.x % u32(grid_size.x));
@@ -229,8 +229,9 @@ const simulationShaderModule = device.createShaderModule({
 // Glueing all together in a pipeline, this is were
 // the magic happens, combine shaders, data/layout and target
 
-// this creates a bind group for our uniforms
-const gridBindGroupLayout = device.createBindGroupLayout({
+// creates a bind group for our uniforms, binds will reflect in the `@bindings` inside a `@group`
+// because GPUBindGroupLayout is defined without attaching to a BindGroup yet
+const gridBindGroupLayout: GPUBindGroupLayout = device.createBindGroupLayout({
     label: 'Grid Bind Group Layout',
     entries: [
         {
@@ -241,7 +242,7 @@ const gridBindGroupLayout = device.createBindGroupLayout({
     ]
 });
 
-const cellBindGroupLayout = device.createBindGroupLayout({
+const cellBindGroupLayout: GPUBindGroupLayout = device.createBindGroupLayout({
     label: 'Cell Bind Group Layout',
     entries: [
         {
@@ -257,7 +258,9 @@ const cellBindGroupLayout = device.createBindGroupLayout({
     ]
 });
 
-const gridBindGroup = device.createBindGroup({
+// this actually attaches a GPUBindGroupLayout to a GPUBindGroup creating a `@group` with
+// the `@binding` layout as defined in the previous step s
+const gridBindGroup: GPUBindGroup = device.createBindGroup({
     label: 'Grid Bind Group',
     layout: gridBindGroupLayout,
     entries: [
@@ -298,12 +301,14 @@ const cellBindGroupSwapped: GPUBindGroup = device.createBindGroup({
     ]
 });
 
-const pipelineLayout = device.createPipelineLayout({
+// combine the `GPUBindGroups` into a `GPUPipelineLayout`
+const pipelineLayout: GPUPipelineLayout = device.createPipelineLayout({
     label: 'Cell Pipeline Layout',
     bindGroupLayouts: [gridBindGroupLayout, cellBindGroupLayout] // <- group 0 is grid, group 1 is cells, eg. ` @group(1) @binding(0) var<storage> cell_state: array<u32>;`
 });
 
-const cellPipeline = device.createRenderPipeline({
+// use the sale pipeline layout for both pipelines
+const cellPipeline: GPURenderPipeline = device.createRenderPipeline({
     label: 'Cell pipeline',
     layout: pipelineLayout,
     vertex: {
@@ -322,7 +327,7 @@ const cellPipeline = device.createRenderPipeline({
     }
 });
 
-const simulationPipeline = device.createComputePipeline({
+const simulationPipeline: GPUComputePipeline = device.createComputePipeline({
     label: 'Simulation pipeline',
     layout: pipelineLayout,
     compute: {
