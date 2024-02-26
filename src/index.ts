@@ -349,8 +349,9 @@ const updateGrid = () => {
     // each update `cellBindGroup` and `cellBindGroupSwapped` must be swapped,
     // the former is used to compute the new state and the other is used to render
     // this variable helps keep track of how groups were used on last iteration
-    const cellComputeGroup = even_pass ? cellBindGroup : cellBindGroupSwapped;
-    const cellRenderGroup = even_pass ? cellBindGroupSwapped : cellBindGroup;
+    const cellComputeBindGroup = even_pass ? cellBindGroup : cellBindGroupSwapped;
+    const cellRenderBindGroup = even_pass ? cellBindGroupSwapped : cellBindGroup;
+
     even_pass = !even_pass;
 
     // a new encoder is required every update
@@ -362,7 +363,7 @@ const updateGrid = () => {
     computePass.setPipeline(cellSimulationPipeline);
 
     computePass.setBindGroup(0, gridBindGroup);
-    computePass.setBindGroup(1, cellComputeGroup);
+    computePass.setBindGroup(1, cellComputeBindGroup);
 
     computePass.dispatchWorkgroups(workgroupCount, workgroupCount); // <- equivalent of draw for render passes
 
@@ -388,7 +389,7 @@ const updateGrid = () => {
     renderPass.setIndexBuffer(indexBuffer, indexFormat);
 
     renderPass.setBindGroup(0, gridBindGroup);
-    renderPass.setBindGroup(1, cellRenderGroup);
+    renderPass.setBindGroup(1, cellRenderBindGroup);
 
     renderPass.drawIndexed(indexes.length, GRID_SIZE_X * GRID_SIZE_Y, 0, 0, 0);
     // renderPass.draw(vertices.length / (2 + 4), GRID_SIZE_X * GRID_SIZE_Y);
