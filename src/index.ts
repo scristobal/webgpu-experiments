@@ -82,23 +82,18 @@ for (let i = 0; i < cellStateArray.length; i++) {
 }
 device.queue.writeBuffer(cellStateStorage[0], 0, cellStateArray);
 
-// a vertex array to represent a square as 2 triangles
-// arranged as triplets of points grouped in two triangles
-// each point has two coords follow by 4 floats representing the color:x, y, r, g, b ,a
-
 // prettier-ignore
+// each vertex has two coordinates (x,y) followed by 4 floats representing the color: (r, g, b ,a)
 const vertices = new Float32Array([
-    -1, -1,    0, 0, 0, 1,
+     1,  1,    0, 0, 0, 1,
      1, -1,    0, 0, 0, 1,
-     1,  1,    0, 0, 0, 1,
     -1, -1,    0, 0, 0, 1,
-     1,  1,    0, 0, 0, 1,
     -1,  1,    0, 0, 0, 1
-]); // exercise: use Index Buffers to avoid repetition
+])
 
 // copy data into the GPU
 const vertexBuffer: GPUBuffer = device.createBuffer({
-    label: 'Cell vertices',
+    label: 'Vertices',
     size: vertices.byteLength,
     usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
 });
@@ -121,10 +116,22 @@ const vertexBufferLayout: GPUVertexBufferLayout = {
     ]
 };
 
+// a square is composed of 2 triangles arranged as triplets of points grouped in two triangles
+const indexes = new Uint32Array([2, 1, 0, 2, 0, 3]);
+
+const indexBuffer: GPUBuffer = device.createBuffer({
+    label: 'Cell Vertex indexes',
+    size: indexes.byteLength,
+    usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST
+});
+device.queue.writeBuffer(indexBuffer, 0, indexes);
+
+const indexFormat: GPUIndexFormat = 'uint32';
+
 // Cell drawing shaders
 
 // this shaders are used to render the board
-const cellShaderModule = device.createShaderModule({
+const cellRenderShaderModule = device.createShaderModule({
     label: 'Cell shader',
     code: /* wgsl */ `
         @group(0) @binding(0) var<uniform> grid_size: vec2<f32>;
@@ -175,7 +182,7 @@ const WORKGROUP_SIZE = 16;
 const workgroupCount = Math.ceil(GRID_SIZE_X / WORKGROUP_SIZE);
 
 // this shader is used to evolve the board state
-const simulationShaderModule = device.createShaderModule({
+const cellSimulationShaderModule = device.createShaderModule({
     label: 'Game of Life simulation shader',
     code: /* wgsl */ `
         @group(0) @binding(0) var<uniform> grid_size: vec2<f32>;
@@ -308,16 +315,16 @@ const pipelineLayout: GPUPipelineLayout = device.createPipelineLayout({
 });
 
 // use the sale pipeline layout for both pipelines
-const cellPipeline: GPURenderPipeline = device.createRenderPipeline({
+const cellRenderPipeline: GPURenderPipeline = device.createRenderPipeline({
     label: 'Cell pipeline',
     layout: pipelineLayout,
     vertex: {
-        module: cellShaderModule,
+        module: cellRenderShaderModule,
         entryPoint: 'vertex_main',
         buffers: [vertexBufferLayout]
     },
     fragment: {
-        module: cellShaderModule,
+        module: cellRenderShaderModule,
         entryPoint: 'fragment_main',
         targets: [
             {
@@ -327,11 +334,11 @@ const cellPipeline: GPURenderPipeline = device.createRenderPipeline({
     }
 });
 
-const simulationPipeline: GPUComputePipeline = device.createComputePipeline({
+const cellSimulationPipeline: GPUComputePipeline = device.createComputePipeline({
     label: 'Simulation pipeline',
     layout: pipelineLayout,
     compute: {
-        module: simulationShaderModule,
+        module: cellSimulationShaderModule,
         entryPoint: 'compute_main'
     }
 });
@@ -352,7 +359,7 @@ const updateGrid = () => {
     // set up the simulation pass
     const computePass = encoder.beginComputePass();
 
-    computePass.setPipeline(simulationPipeline);
+    computePass.setPipeline(cellSimulationPipeline);
 
     computePass.setBindGroup(0, gridBindGroup);
     computePass.setBindGroup(1, cellComputeGroup);
@@ -375,14 +382,16 @@ const updateGrid = () => {
         ]
     });
 
-    renderPass.setPipeline(cellPipeline);
+    renderPass.setPipeline(cellRenderPipeline);
 
     renderPass.setVertexBuffer(0, vertexBuffer);
+    renderPass.setIndexBuffer(indexBuffer, indexFormat);
 
     renderPass.setBindGroup(0, gridBindGroup);
     renderPass.setBindGroup(1, cellRenderGroup);
 
-    renderPass.draw(vertices.length / (2 + 4), GRID_SIZE_X * GRID_SIZE_Y);
+    renderPass.drawIndexed(indexes.length, GRID_SIZE_X * GRID_SIZE_Y, 0, 0, 0);
+    // renderPass.draw(vertices.length / (2 + 4), GRID_SIZE_X * GRID_SIZE_Y);
 
     renderPass.end();
 
