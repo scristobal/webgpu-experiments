@@ -318,6 +318,9 @@ const pipelineLayout: GPUPipelineLayout = device.createPipelineLayout({
 const cellRenderPipeline: GPURenderPipeline = device.createRenderPipeline({
     label: 'Cell pipeline',
     layout: pipelineLayout,
+    primitive: {
+        topology: 'triangle-list'
+    },
     vertex: {
         module: cellRenderShaderModule,
         entryPoint: 'vertex_main',
