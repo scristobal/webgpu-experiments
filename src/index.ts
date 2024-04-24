@@ -1,21 +1,33 @@
 // Adapted from sample GPU app from Google's I/O 2023
 // https://codelabs.developers.google.com/your-first-webgpu-app
 
+// document.addEventListener('initerror', (e) => {
+//     console.log('got a ', e.type);
+//     console.log('event', e);
+// });
+
 const version = import.meta.env.VITE_APP_VERSION;
 console.log(`Using version ${version}`);
+
+function errorHelper<T>(maybeNull: T, errorMessage: string): asserts maybeNull is NonNullable<T> {
+    const notSupportedError = new CustomEvent('initerror', {
+        detail: errorMessage
+    });
+
+    document.dispatchEvent(notSupportedError);
+
+    throw new Error(errorMessage);
+}
 
 // Initialization and checks
 
 // get adapter
-if (!navigator.gpu) {
-    throw new Error('WebGPU not supported on this browser.');
-}
+if (!navigator.gpu) errorHelper(navigator.gpu, 'WebGPU not supported on this browser.');
 
 const adapter = await navigator.gpu.requestAdapter();
 
-if (!adapter) {
-    throw new Error('No appropriate GPUAdapter found.');
-}
+if (!adapter)
+    errorHelper(adapter, 'No appropriate GPUAdapter found. Most likely WebGPU not supported on this browser.');
 
 // use adapter to get device
 const device = await adapter.requestDevice();
@@ -25,18 +37,14 @@ const canvasFormat = navigator.gpu.getPreferredCanvasFormat();
 
 const canvas = document.querySelector('canvas');
 
-if (!canvas) {
-    throw new Error('No canvas found.');
-}
+if (!canvas) errorHelper(canvas, 'No canvas found, be sure to include a <canvas> element in your HTML');
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 const context = canvas.getContext('webgpu');
 
-if (!context) {
-    throw new Error('No WebGPU context found.');
-}
+if (!context) errorHelper(context, 'No WebGPU context found. Most likely WebGPU not supported on this browser.');
 
 context.configure({
     device: device,
