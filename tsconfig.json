@@ -29,11 +29,7 @@
         "importHelpers": true,
         "incremental": false,
         "noUncheckedIndexedAccess": true,
-        "sourceMap": true,
-        "baseUrl": ".",
-        "paths": {
-            "@/*": ["game-of-life/*"]
-        }
+        "sourceMap": true
     },
     "include": ["**/*.ts"],
     "exclude": ["node_modules", "lib"]
