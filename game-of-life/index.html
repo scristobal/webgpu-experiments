@@ -1,0 +1,64 @@
+<!doctype html>
+
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+        <title>WebGPU Life</title>
+
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.red.min.css" />
+
+        <!-- icon -->
+        <link rel="icon" type="image/png" href="/favicon.png" />
+
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+            }
+
+            canvas {
+                image-rendering: pixelated;
+            }
+
+            /* https://bugs.chromium.org/p/chromium/issues/detail?id=993762 */
+            /* https://stackoverflow.com/questions/69867152/how-to-disable-filtering-on-canvas-with-webgpu-context */
+            .pixelated-workaround {
+                animation: fix-image-rendering-bug 0.0001s;
+            }
+
+            @keyframes fix-image-rendering-bug {
+                to {
+                    opacity: 1;
+                }
+            }
+
+            .error-container {
+                position: fixed;
+                top: 1rem;
+                left: 1rem;
+            }
+        </style>
+        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+        <script defer src="index.ts" type="module"></script>
+    </head>
+
+    <body>
+        <canvas class="pixelated-workaround"> </canvas>
+
+        <div
+            x-on:initerror.document="errorMessage = $event.detail"
+            class="error-container"
+            x-data="{ errorMessage: undefined }"
+            x-show="errorMessage !== undefined">
+            <h1 x-text="errorMessage"></h1>
+            <p x-text="navigator.userAgent"></p>
+            <small
+                >WebGPU is still experimental.
+                <a href="https://caniuse.com/webgpu">Check compatible browsers </a></small
+            >
+        </div>
+    </body>
+</html>

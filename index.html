@@ -5,60 +5,65 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-        <title>WebGPU Life</title>
+        <title>Experiments</title>
 
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.red.min.css" />
 
         <!-- icon -->
-        <link rel="icon" type="image/png" href="/favicon.png" />
+        <link
+            rel="icon"
+            href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧪</text></svg>" />
+
+        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+        <script defer src="check-webgpu.ts" type="module"></script>
 
         <style>
-            body {
-                margin: 0;
-                padding: 0;
-                overflow: hidden;
-            }
-
-            canvas {
-                image-rendering: pixelated;
-            }
-
-            /* https://bugs.chromium.org/p/chromium/issues/detail?id=993762 */
-            /* https://stackoverflow.com/questions/69867152/how-to-disable-filtering-on-canvas-with-webgpu-context */
-            .pixelated-workaround {
-                animation: fix-image-rendering-bug 0.0001s;
-            }
-
-            @keyframes fix-image-rendering-bug {
-                to {
-                    opacity: 1;
-                }
-            }
-
-            .error-container {
-                position: fixed;
-                top: 1rem;
-                left: 1rem;
+            main {
+                min-height: 600px;
             }
         </style>
-        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-        <script defer src="src/index.ts" type="module"></script>
     </head>
 
     <body>
-        <canvas class="pixelated-workaround"> </canvas>
+        <div class="container">
+            <nav>
+                <ul>
+                    <li><strong>🦀</strong></li>
+                </ul>
+                <ul>
+                    <li><a href="https://samuel.cristobal.messy.page/">About</a></li>
+                    <li><a href="https://blog.messy.page/">Blog</a></li>
+                    <li><a href="https://github.com/scristobal">Github</a></li>
+                </ul>
+            </nav>
+            <main>
+                <hgroup>
+                    <h1>Samu's WebGPU adventures</h1>
+                    <p>Random collection of experiments using WebGPU, WebGL and some Web Assembly.</p>
+                </hgroup>
+                <div class="container" x-on:capable.document="capable = $event.detail" x-data="{ capable: undefined }">
+                    <p x-show="capable">
+                        <strong><small>Your device is supported!</small></strong>
+                    </p>
+                    <p x-show="!capable">
+                        <strong><small>Your device is not supported by WebPGU yet... :(</small></strong>
+                    </p>
+                </div>
+                <ul>
+                    <li><a href="/game-of-life/">Game of Life using WebGPU compute shaders</a></li>
+                    <li><a disabled href="/renderer/">Basic 2.5D renderer using WebGPU (coming soon)</a></li>
+                </ul>
+            </main>
+            <footer>
+                <hr />
+                <small x-cloak>
+                    <span x-init x-text="navigator.userAgent"></span>
+                    <br />
 
-        <div
-            x-on:initerror.document="errorMessage = $event.detail"
-            class="error-container"
-            x-data="{ errorMessage: undefined }"
-            x-show="errorMessage !== undefined">
-            <h1 x-text="errorMessage"></h1>
-            <p x-text="navigator.userAgent"></p>
-            <small
-                >WebGPU is still experimental.
-                <a href="https://caniuse.com/webgpu">Check compatible browsers </a></small
-            >
+                    WebGPU is still experimental.
+                    <a href="https://caniuse.com/webgpu">Check compatible browsers and support</a></small
+                >
+            </footer>
         </div>
     </body>
 </html>
