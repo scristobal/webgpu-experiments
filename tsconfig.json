@@ -32,9 +32,9 @@
         "sourceMap": true,
         "baseUrl": ".",
         "paths": {
-            "@/*": ["./src/*"]
+            "@/*": ["game-of-life/*"]
         }
     },
-    "include": ["**/*.ts", "src/index.js"],
-    "exclude": ["src/**/*.test.ts", "node_modules", "lib"]
+    "include": ["**/*.ts"],
+    "exclude": ["node_modules", "lib"]
 }
