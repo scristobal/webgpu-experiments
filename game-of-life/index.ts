@@ -1,11 +1,6 @@
 // Adapted from sample GPU app from Google's I/O 2023
 // https://codelabs.developers.google.com/your-first-webgpu-app
 
-// document.addEventListener('initerror', (e) => {
-//     console.log('got a ', e.type);
-//     console.log('event', e);
-// });
-
 const version = import.meta.env.VITE_APP_VERSION;
 console.log(`Using version ${version}`);
 
