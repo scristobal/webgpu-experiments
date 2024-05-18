@@ -13,11 +13,11 @@ async function main() {
 
     // prettier-ignore
     const verticesData = new Float32Array([
-     1,  1,
-     1, -1,
-    -1, -1,
-    -1,  1
-]);
+         1,  1,
+         1, -1,
+        -1, -1,
+        -1,  1
+    ]);
 
     const vertexBuffer: GPUBuffer = device.createBuffer({
         size: verticesData.byteLength,
@@ -34,8 +34,7 @@ async function main() {
                 format: 'float32x2',
                 offset: 0
             }
-        ],
-        stepMode: 'vertex'
+        ]
     };
 
     const indexData = new Uint32Array([2, 1, 0, 2, 0, 3]);
@@ -65,9 +64,6 @@ async function main() {
 
     const pipeline: GPURenderPipeline = device.createRenderPipeline({
         layout: pipelineLayout,
-        primitive: {
-            topology: 'triangle-list'
-        },
         vertex: {
             module: shaderModule,
             buffers: [vertexBufferLayout]
@@ -106,6 +102,8 @@ async function main() {
 
         const commandBuffer = encoder.finish();
         device.queue.submit([commandBuffer]);
+
+        requestAnimationFrame(render);
     }
 
     const canvasToSizeMap = new WeakMap();
