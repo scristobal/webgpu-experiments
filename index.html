@@ -19,7 +19,16 @@
 
         <style>
             main {
-                min-height: 600px;
+                min-height: -moz-fit-content;
+                min-height: fit-content;
+            }
+
+            @media (min-height: 25rem) {
+                footer {
+                    position: fixed;
+                    bottom: 0;
+                    padding-bottom: 1rem;
+                }
             }
         </style>
     </head>
