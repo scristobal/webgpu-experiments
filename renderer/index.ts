@@ -77,24 +77,47 @@ async function main() {
         usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT
     });
 
-    device.queue.copyExternalImageToTexture(
-        { source, flipY: true },
-        { texture },
-        { width: source.width, height: source.height }
-    );
+    device.queue.copyExternalImageToTexture({ source }, { texture }, { width: source.width, height: source.height });
+
+    const sampler = device.createSampler();
+
+    const bindGroupLayout: GPUBindGroupLayout = device.createBindGroupLayout({
+        entries: [
+            { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } },
+            { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } }
+        ]
+    });
+
+    const bindGroup = device.createBindGroup({
+        layout: bindGroupLayout,
+        entries: [
+            {
+                binding: 0,
+                resource: sampler
+            },
+            {
+                binding: 1,
+                resource: texture.createView()
+            }
+        ]
+    });
 
     const shaderModule: GPUShaderModule = device.createShaderModule({
         code: /* wgsl */ `
 
         struct VertexOutput {
             @builtin(position) position: vec4f,
-            @location(0) texcoord: vec2f,
+            @location(0) texture_coords: vec2f,
         };
 
-        @vertex fn vertex_main(@location(0) position: vec2f, @location(1) texcoord: vec2f ) -> VertexOutput {
+
+        @group(0) @binding(0) var texture_sampler: sampler;
+        @group(0) @binding(1) var texture: texture_2d<f32>;
+
+        @vertex fn vertex_main(@location(0) position: vec2f, @location(1) texture_coords: vec2f ) -> VertexOutput {
             var output: VertexOutput;
-            output.position =  vec4f(position, 0.0, 1.0);
-            output.texcoord = texcoord;
+            output.position =  vec4f(0.8*position, 0.0, 1.0);
+            output.texture_coords = texture_coords;
 
             return output;
         }
@@ -102,13 +125,13 @@ async function main() {
 
 
         @fragment fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
-
+            return textureSample(texture, texture_sampler, input.texture_coords);
             return vec4f(0.0, 0.0, 0.0, 1);
         }
         `
     });
 
-    const pipelineLayout: GPUPipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [] });
+    const pipelineLayout: GPUPipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] });
 
     const pipeline: GPURenderPipeline = device.createRenderPipeline({
         layout: pipelineLayout,
@@ -134,7 +157,7 @@ async function main() {
                 {
                     view,
                     loadOp: 'clear',
-                    clearValue: { r: 1.0, g: 1.0, b: 1.0, a: 1.0 },
+                    clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
                     storeOp: 'store'
                 }
             ]
@@ -143,6 +166,8 @@ async function main() {
         renderPass.setPipeline(pipeline);
         renderPass.setVertexBuffer(0, vertexBuffer);
         renderPass.setIndexBuffer(indexBuffer, indexFormat);
+
+        renderPass.setBindGroup(0, bindGroup);
 
         renderPass.drawIndexed(indexData.length);
 
