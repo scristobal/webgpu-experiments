@@ -1,4 +1,11 @@
+async function loadImageBitmap(url: string) {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return await createImageBitmap(blob, { colorSpaceConversion: 'none' });
+}
+
 async function main() {
+    // setup
     const adapter = (await navigator.gpu.requestAdapter())!;
 
     const device = (await adapter.requestDevice())!;
@@ -12,11 +19,12 @@ async function main() {
     context.configure({ format, device });
 
     // prettier-ignore
+    // vertices data
     const verticesData = new Float32Array([
-         1,  1,
-         1, -1,
-        -1, -1,
-        -1,  1
+         1,  1,     1, 0,
+         1, -1,     1, 1,
+        -1, -1,     0, 1,
+        -1,  1,     0, 0
     ]);
 
     const vertexBuffer: GPUBuffer = device.createBuffer({
@@ -27,17 +35,27 @@ async function main() {
     device.queue.writeBuffer(vertexBuffer, 0, verticesData);
 
     const vertexBufferLayout: GPUVertexBufferLayout = {
-        arrayStride: 2 * 4,
+        arrayStride: 2 * 4 + 2 * 4,
         attributes: [
             {
                 shaderLocation: 0,
                 format: 'float32x2',
                 offset: 0
+            },
+            {
+                shaderLocation: 1,
+                format: 'float32x2',
+                offset: 2 * 4
             }
         ]
     };
 
-    const indexData = new Uint32Array([2, 1, 0, 2, 0, 3]);
+    // prettier-ignore
+    // indexes data
+    const indexData = new Uint32Array([
+        2, 1, 0,
+        2, 0, 3
+    ]);
 
     const indexBuffer: GPUBuffer = device.createBuffer({
         size: indexData.byteLength,
@@ -48,16 +66,46 @@ async function main() {
 
     const indexFormat: GPUIndexFormat = 'uint32';
 
+    // texture data
+    const url = '/avatar-1x.png';
+    const source = await loadImageBitmap(url);
+
+    const texture = device.createTexture({
+        label: url,
+        format: 'rgba8unorm',
+        size: [source.width, source.height],
+        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT
+    });
+
+    device.queue.copyExternalImageToTexture(
+        { source, flipY: true },
+        { texture },
+        { width: source.width, height: source.height }
+    );
+
     const shaderModule: GPUShaderModule = device.createShaderModule({
         code: /* wgsl */ `
-        @vertex fn vertex_main(@location(0) position: vec2f) -> @builtin(position) vec4f {
-            return vec4f(position, 0.0, 1.0);
+
+        struct VertexOutput {
+            @builtin(position) position: vec4f,
+            @location(0) texcoord: vec2f,
+        };
+
+        @vertex fn vertex_main(@location(0) position: vec2f, @location(1) texcoord: vec2f ) -> VertexOutput {
+            var output: VertexOutput;
+            output.position =  vec4f(position, 0.0, 1.0);
+            output.texcoord = texcoord;
+
+            return output;
         }
 
-        @fragment fn fragment_main(@builtin(position) position: vec4f) -> @location(0) vec4f {
+
+
+        @fragment fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
+
             return vec4f(0.0, 0.0, 0.0, 1);
         }
-    `
+        `
     });
 
     const pipelineLayout: GPUPipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [] });
