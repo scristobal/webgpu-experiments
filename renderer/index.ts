@@ -79,12 +79,18 @@ async function main() {
 
     device.queue.copyExternalImageToTexture({ source }, { texture }, { width: source.width, height: source.height });
 
-    const sampler = device.createSampler();
-
     const bindGroupLayout: GPUBindGroupLayout = device.createBindGroupLayout({
         entries: [
-            { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } },
-            { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } }
+            {
+                binding: 0,
+                visibility: GPUShaderStage.FRAGMENT,
+                sampler: { type: 'filtering' }
+            },
+            {
+                binding: 1,
+                visibility: GPUShaderStage.FRAGMENT,
+                texture: { sampleType: 'float' }
+            }
         ]
     });
 
@@ -93,7 +99,7 @@ async function main() {
         entries: [
             {
                 binding: 0,
-                resource: sampler
+                resource: device.createSampler()
             },
             {
                 binding: 1,
@@ -110,10 +116,6 @@ async function main() {
             @location(0) texture_coords: vec2f,
         };
 
-
-        @group(0) @binding(0) var texture_sampler: sampler;
-        @group(0) @binding(1) var texture: texture_2d<f32>;
-
         @vertex fn vertex_main(@location(0) position: vec2f, @location(1) texture_coords: vec2f ) -> VertexOutput {
             var output: VertexOutput;
             output.position =  vec4f(0.8*position, 0.0, 1.0);
@@ -122,11 +124,11 @@ async function main() {
             return output;
         }
 
-
+        @group(0) @binding(0) var texture_sampler: sampler;
+        @group(0) @binding(1) var texture: texture_2d<f32>;
 
         @fragment fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
             return textureSample(texture, texture_sampler, input.texture_coords);
-            return vec4f(0.0, 0.0, 0.0, 1);
         }
         `
     });
