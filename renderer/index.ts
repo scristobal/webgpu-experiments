@@ -90,9 +90,23 @@ async function main() {
                 binding: 1,
                 visibility: GPUShaderStage.FRAGMENT,
                 texture: { sampleType: 'float' }
+            },
+            {
+                binding: 2,
+                visibility: GPUShaderStage.VERTEX,
+                buffer: { type: 'uniform' }
             }
         ]
     });
+
+    const resolutionData = new Float32Array([canvas.width, canvas.height]);
+
+    const resolutionBuffer: GPUBuffer = device.createBuffer({
+        size: resolutionData.byteLength,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+
+    device.queue.writeBuffer(resolutionBuffer, 0, resolutionData);
 
     const bindGroup = device.createBindGroup({
         layout: bindGroupLayout,
@@ -104,6 +118,10 @@ async function main() {
             {
                 binding: 1,
                 resource: texture.createView()
+            },
+            {
+                binding: 2,
+                resource: { buffer: resolutionBuffer }
             }
         ]
     });
@@ -111,14 +129,20 @@ async function main() {
     const shaderModule: GPUShaderModule = device.createShaderModule({
         code: /* wgsl */ `
 
+        @group(0) @binding(2) var<uniform> resolution: vec2f;
+
         struct VertexOutput {
             @builtin(position) position: vec4f,
             @location(0) texture_coords: vec2f,
         };
 
         @vertex fn vertex_main(@location(0) position: vec2f, @location(1) texture_coords: vec2f ) -> VertexOutput {
+
+            var ratio = resolution.x / resolution.y;
+            var scale = 0.6;
+
             var output: VertexOutput;
-            output.position =  vec4f(0.8*position, 0.0, 1.0);
+            output.position =  vec4f(scale * position.x / ratio, scale * position.y, 0.0, 1.0);
             output.texture_coords = texture_coords;
 
             return output;
@@ -126,6 +150,7 @@ async function main() {
 
         @group(0) @binding(0) var texture_sampler: sampler;
         @group(0) @binding(1) var texture: texture_2d<f32>;
+
 
         @fragment fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
             return textureSample(texture, texture_sampler, input.texture_coords);
@@ -153,6 +178,10 @@ async function main() {
         const encoder = device.createCommandEncoder();
 
         const view = context.getCurrentTexture().createView();
+
+        resolutionData.set([canvas.width, canvas.height]);
+
+        device.queue.writeBuffer(resolutionBuffer, 0, resolutionData);
 
         const renderPass = encoder.beginRenderPass({
             colorAttachments: [
