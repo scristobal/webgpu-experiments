@@ -10,21 +10,21 @@ async function main() {
 
     const device = (await adapter.requestDevice())!;
 
-    const format = navigator.gpu.getPreferredCanvasFormat();
+    const canvasFormat = navigator.gpu.getPreferredCanvasFormat();
 
-    const canvas = document.querySelector('canvas')!;
+    const canvasElement = document.querySelector('canvas')!;
 
-    const context = canvas.getContext('webgpu')!;
+    const canvasContext = canvasElement.getContext('webgpu')!;
 
-    context.configure({ format, device });
+    canvasContext.configure({ format: canvasFormat, device });
 
     // prettier-ignore
     // vertices data
     const verticesData = new Float32Array([
-         1,  1,     1, 0,
-         1, -1,     1, 1,
-        -1, -1,     0, 1,
-        -1,  1,     0, 0
+         1,  1,  1,    1, 0,
+         1, -1,  1,    1, 1,
+        -1, -1,  1,    0, 1,
+        -1,  1,  1,    0, 0
     ]);
 
     const vertexBuffer: GPUBuffer = device.createBuffer({
@@ -35,17 +35,17 @@ async function main() {
     device.queue.writeBuffer(vertexBuffer, 0, verticesData);
 
     const vertexBufferLayout: GPUVertexBufferLayout = {
-        arrayStride: 2 * 4 + 2 * 4,
+        arrayStride: 3 * 4 + 2 * 4,
         attributes: [
             {
                 shaderLocation: 0,
-                format: 'float32x2',
+                format: 'float32x3',
                 offset: 0
             },
             {
                 shaderLocation: 1,
                 format: 'float32x2',
-                offset: 2 * 4
+                offset: 3 * 4
             }
         ]
     };
@@ -72,7 +72,7 @@ async function main() {
 
     const texture = device.createTexture({
         label: url,
-        format: 'rgba8unorm',
+        format: canvasFormat,
         size: [source.width, source.height],
         usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT
     });
@@ -99,7 +99,7 @@ async function main() {
         ]
     });
 
-    const resolutionData = new Float32Array([canvas.width, canvas.height]);
+    const resolutionData = new Float32Array([canvasElement.width, canvasElement.height]);
 
     const resolutionBuffer: GPUBuffer = device.createBuffer({
         size: resolutionData.byteLength,
@@ -126,6 +126,12 @@ async function main() {
         ]
     });
 
+    let depthTexture = device.createTexture({
+        size: [canvasElement.width, canvasElement.height],
+        format: 'depth32float',
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
+    });
+
     const shaderModule: GPUShaderModule = device.createShaderModule({
         code: /* wgsl */ `
 
@@ -136,13 +142,13 @@ async function main() {
             @location(0) texture_coords: vec2f,
         };
 
-        @vertex fn vertex_main(@location(0) position: vec2f, @location(1) texture_coords: vec2f ) -> VertexOutput {
+        @vertex fn vertex_main(@location(0) position: vec3f, @location(1) texture_coords: vec2f ) -> VertexOutput {
 
             var ratio = resolution.x / resolution.y;
             var scale = 0.6;
 
             var output: VertexOutput;
-            output.position =  vec4f(scale * position.x / ratio, scale * position.y, 0.0, 1.0);
+            output.position =  vec4f(scale * position.x / ratio, scale * position.y, position.z, 1.0);
             output.texture_coords = texture_coords;
 
             return output;
@@ -168,18 +174,29 @@ async function main() {
         },
         fragment: {
             module: shaderModule,
-            targets: [{ format }]
+            targets: [{ format: canvasFormat }]
+        },
+        depthStencil: {
+            format: depthTexture.format,
+            depthCompare: 'less-equal',
+            depthWriteEnabled: true
         }
     });
 
     function render() {
-        resizeCanvasToDisplaySize(canvas);
+        if (resizeCanvasToDisplaySize(canvasElement)) {
+            depthTexture = device.createTexture({
+                size: [canvasElement.width, canvasElement.height],
+                format: depthTexture.format,
+                usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
+            });
+        }
 
         const encoder = device.createCommandEncoder();
 
-        const view = context.getCurrentTexture().createView();
+        const view = canvasContext.getCurrentTexture().createView();
 
-        resolutionData.set([canvas.width, canvas.height]);
+        resolutionData.set([canvasElement.width, canvasElement.height]);
 
         device.queue.writeBuffer(resolutionBuffer, 0, resolutionData);
 
@@ -191,7 +208,13 @@ async function main() {
                     clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
                     storeOp: 'store'
                 }
-            ]
+            ],
+            depthStencilAttachment: {
+                view: depthTexture.createView(),
+                depthLoadOp: 'clear',
+                depthClearValue: 1.0,
+                depthStoreOp: 'store'
+            }
         });
 
         renderPass.setPipeline(pipeline);
@@ -238,7 +261,7 @@ async function main() {
         }
         render();
     });
-    observer.observe(canvas);
+    observer.observe(canvasElement);
 }
 
 main();
