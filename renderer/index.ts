@@ -1,15 +1,19 @@
-async function main() {
+async function main(canvasElement: HTMLCanvasElement) {
     // setup
 
-    const adapter = (await navigator.gpu.requestAdapter())!;
+    const adapter = await navigator.gpu.requestAdapter();
 
-    const device = (await adapter.requestDevice())!;
+    if (!adapter) throw new Error('Unable to request adapter');
+
+    const device = await adapter.requestDevice();
+
+    if (!device) throw new Error('Unable to request device ');
 
     const canvasFormat = navigator.gpu.getPreferredCanvasFormat();
 
-    const canvasElement = document.querySelector('canvas')!;
-
     const canvasContext = canvasElement.getContext('webgpu')!;
+
+    if (!canvasContext) throw new Error('Unable to get WebGPU canvas context');
 
     canvasContext.configure({ format: canvasFormat, device });
 
@@ -197,15 +201,16 @@ async function main() {
 
     // resize
 
-    const canvasToSizeMap = new WeakMap();
+    const canvasToSizeMap = new WeakMap<Element, { width?: number; height?: number }>();
+    const maxTextureDimension = device.limits.maxTextureDimension2D;
 
     function resizeCanvasToDisplaySize(canvas: HTMLCanvasElement) {
         // Get the canvas's current display size
         let { width, height } = canvasToSizeMap.get(canvas) || canvas;
 
         // Make sure it's valid for WebGPU
-        width = Math.max(1, Math.min(width, device.limits.maxTextureDimension2D));
-        height = Math.max(1, Math.min(height, device.limits.maxTextureDimension2D));
+        width = Math.max(1, Math.min(width ?? maxTextureDimension, maxTextureDimension));
+        height = Math.max(1, Math.min(height ?? maxTextureDimension, maxTextureDimension));
 
         // Only if the size is different, set the canvas size
         const needResize = canvas.width !== width || canvas.height !== height;
@@ -279,7 +284,11 @@ async function main() {
     return { render };
 }
 
-main()
+const canvasElement = document.querySelector('canvas') ?? document.createElement('canvas');
+
+if (!document.contains(canvasElement)) document.body.append(canvasElement);
+
+main(canvasElement)
     .then(({ render }) => render())
     .catch((e) => alert(e))
     .finally(() => console.log('done', new Date()));
