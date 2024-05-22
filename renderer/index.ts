@@ -1,11 +1,6 @@
-async function loadImageBitmap(url: string) {
-    const res = await fetch(url);
-    const blob = await res.blob();
-    return await createImageBitmap(blob, { colorSpaceConversion: 'none' });
-}
-
 async function main() {
     // setup
+
     const adapter = (await navigator.gpu.requestAdapter())!;
 
     const device = (await adapter.requestDevice())!;
@@ -18,8 +13,9 @@ async function main() {
 
     canvasContext.configure({ format: canvasFormat, device });
 
-    // prettier-ignore
     // vertices data
+
+    // prettier-ignore
     const verticesData = new Float32Array([
          1,  1,  1,    1, 0,
          1, -1,  1,    1, 1,
@@ -50,8 +46,9 @@ async function main() {
         ]
     };
 
+    // indexing
+
     // prettier-ignore
-    // indexes data
     const indexData = new Uint32Array([
         2, 1, 0,
         2, 0, 3
@@ -66,7 +63,14 @@ async function main() {
 
     const indexFormat: GPUIndexFormat = 'uint32';
 
-    // texture data
+    // textures
+
+    async function loadImageBitmap(url: string) {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        return await createImageBitmap(blob, { colorSpaceConversion: 'none' });
+    }
+
     const url = '/avatar-1x.png';
     const source = await loadImageBitmap(url);
 
@@ -99,6 +103,8 @@ async function main() {
         ]
     });
 
+    // uniforms
+
     const resolutionData = new Float32Array([canvasElement.width, canvasElement.height]);
 
     const resolutionBuffer: GPUBuffer = device.createBuffer({
@@ -126,11 +132,15 @@ async function main() {
         ]
     });
 
+    // depth
+
     let depthTexture = device.createTexture({
         size: [canvasElement.width, canvasElement.height],
         format: 'depth32float',
         usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
     });
+
+    // shaders
 
     const shaderModule: GPUShaderModule = device.createShaderModule({
         code: /* wgsl */ `
@@ -164,6 +174,8 @@ async function main() {
         `
     });
 
+    // pipeline
+
     const pipelineLayout: GPUPipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] });
 
     const pipeline: GPURenderPipeline = device.createRenderPipeline({
@@ -183,6 +195,40 @@ async function main() {
         }
     });
 
+    // resize
+
+    const canvasToSizeMap = new WeakMap();
+
+    function resizeCanvasToDisplaySize(canvas: HTMLCanvasElement) {
+        // Get the canvas's current display size
+        let { width, height } = canvasToSizeMap.get(canvas) || canvas;
+
+        // Make sure it's valid for WebGPU
+        width = Math.max(1, Math.min(width, device.limits.maxTextureDimension2D));
+        height = Math.max(1, Math.min(height, device.limits.maxTextureDimension2D));
+
+        // Only if the size is different, set the canvas size
+        const needResize = canvas.width !== width || canvas.height !== height;
+        if (needResize) {
+            canvas.width = width;
+            canvas.height = height;
+        }
+        return needResize;
+    }
+
+    const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+            canvasToSizeMap.set(entry.target, {
+                width: entry.contentBoxSize[0]?.inlineSize,
+                height: entry.contentBoxSize[0]?.blockSize
+            });
+        }
+    });
+
+    observer.observe(canvasElement);
+
+    // render
+
     function render() {
         if (resizeCanvasToDisplaySize(canvasElement)) {
             depthTexture = device.createTexture({
@@ -190,20 +236,17 @@ async function main() {
                 format: depthTexture.format,
                 usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
             });
+
+            resolutionData.set([canvasElement.width, canvasElement.height]);
+            device.queue.writeBuffer(resolutionBuffer, 0, resolutionData);
         }
 
         const encoder = device.createCommandEncoder();
 
-        const view = canvasContext.getCurrentTexture().createView();
-
-        resolutionData.set([canvasElement.width, canvasElement.height]);
-
-        device.queue.writeBuffer(resolutionBuffer, 0, resolutionData);
-
         const renderPass = encoder.beginRenderPass({
             colorAttachments: [
                 {
-                    view,
+                    view: canvasContext.getCurrentTexture().createView(),
                     loadOp: 'clear',
                     clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
                     storeOp: 'store'
@@ -233,39 +276,10 @@ async function main() {
         requestAnimationFrame(render);
     }
 
-    const canvasToSizeMap = new WeakMap();
-
-    function resizeCanvasToDisplaySize(canvas: HTMLCanvasElement) {
-        // Get the canvas's current display size
-        let { width, height } = canvasToSizeMap.get(canvas) || canvas;
-
-        // Make sure it's valid for WebGPU
-        width = Math.max(1, Math.min(width, device.limits.maxTextureDimension2D));
-        height = Math.max(1, Math.min(height, device.limits.maxTextureDimension2D));
-
-        // Only if the size is different, set the canvas size
-        const needResize = canvas.width !== width || canvas.height !== height;
-        if (needResize) {
-            canvas.width = width;
-            canvas.height = height;
-        }
-        return needResize;
-    }
-
-    const observer = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-            canvasToSizeMap.set(entry.target, {
-                width: entry.contentBoxSize[0]?.inlineSize,
-                height: entry.contentBoxSize[0]?.blockSize
-            });
-        }
-        render();
-    });
-    observer.observe(canvasElement);
+    return { render };
 }
 
-main();
-
-console.log('done', new Date());
-
-export { main };
+main()
+    .then(({ render }) => render())
+    .catch((e) => alert(e))
+    .finally(() => console.log('done', new Date()));
