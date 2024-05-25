@@ -82,30 +82,10 @@ async function main(canvasElement: HTMLCanvasElement) {
         label: url,
         format: canvasFormat,
         size: [source.width, source.height],
-        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT
+        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST
     });
 
     device.queue.copyExternalImageToTexture({ source }, { texture }, { width: source.width, height: source.height });
-
-    const bindGroupLayout: GPUBindGroupLayout = device.createBindGroupLayout({
-        entries: [
-            {
-                binding: 0,
-                visibility: GPUShaderStage.FRAGMENT,
-                sampler: { type: 'filtering' }
-            },
-            {
-                binding: 1,
-                visibility: GPUShaderStage.FRAGMENT,
-                texture: { sampleType: 'float' }
-            },
-            {
-                binding: 2,
-                visibility: GPUShaderStage.VERTEX,
-                buffer: { type: 'uniform' }
-            }
-        ]
-    });
 
     // uniforms
 
@@ -118,30 +98,52 @@ async function main(canvasElement: HTMLCanvasElement) {
 
     device.queue.writeBuffer(resolutionBuffer, 0, resolutionData);
 
-    const bindGroup = device.createBindGroup({
-        layout: bindGroupLayout,
-        entries: [
-            {
-                binding: 0,
-                resource: device.createSampler()
-            },
-            {
-                binding: 1,
-                resource: texture.createView()
-            },
-            {
-                binding: 2,
-                resource: { buffer: resolutionBuffer }
-            }
-        ]
-    });
-
     // depth
 
     let depthTexture = device.createTexture({
         size: [canvasElement.width, canvasElement.height],
         format: 'depth32float',
-        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
+        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT
+    });
+
+    // bindings
+
+    const bindGroupLayout: GPUBindGroupLayout = device.createBindGroupLayout({
+        entries: [
+            {
+                binding: 0,
+                visibility: GPUShaderStage.VERTEX,
+                buffer: { type: 'uniform' }
+            },
+            {
+                binding: 1,
+                visibility: GPUShaderStage.FRAGMENT,
+                sampler: { type: 'filtering' }
+            },
+            {
+                binding: 2,
+                visibility: GPUShaderStage.FRAGMENT,
+                texture: { sampleType: 'float' }
+            }
+        ]
+    });
+
+    const bindGroup = device.createBindGroup({
+        layout: bindGroupLayout,
+        entries: [
+            {
+                binding: 0,
+                resource: { buffer: resolutionBuffer }
+            },
+            {
+                binding: 1,
+                resource: device.createSampler()
+            },
+            {
+                binding: 2,
+                resource: texture.createView()
+            }
+        ]
     });
 
     // shaders
@@ -149,7 +151,7 @@ async function main(canvasElement: HTMLCanvasElement) {
     const shaderModule: GPUShaderModule = device.createShaderModule({
         code: /* wgsl */ `
 
-        @group(0) @binding(2) var<uniform> resolution: vec2f;
+        @group(0) @binding(0) var<uniform> resolution: vec2f;
 
         struct VertexOutput {
             @builtin(position) position: vec4f,
@@ -168,8 +170,8 @@ async function main(canvasElement: HTMLCanvasElement) {
             return output;
         }
 
-        @group(0) @binding(0) var texture_sampler: sampler;
-        @group(0) @binding(1) var texture: texture_2d<f32>;
+        @group(0) @binding(1) var texture_sampler: sampler;
+        @group(0) @binding(2) var texture: texture_2d<f32>;
 
 
         @fragment fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
@@ -218,7 +220,7 @@ async function main(canvasElement: HTMLCanvasElement) {
 
     // resize
 
-    const canvasToSizeMap = new WeakMap<Element, { width?: number; height?: number }>();
+    const canvasToSizeMap = new WeakMap<Element, { width: number; height: number }>();
     const maxTextureDimension = device.limits.maxTextureDimension2D;
 
     function resizeCanvasToDisplaySize(canvas: HTMLCanvasElement) {
@@ -240,9 +242,13 @@ async function main(canvasElement: HTMLCanvasElement) {
 
     const observer = new ResizeObserver((entries) => {
         for (const entry of entries) {
+            const contentBoxSize = entry.contentBoxSize[0];
+
+            if (!contentBoxSize) continue;
+
             canvasToSizeMap.set(entry.target, {
-                width: entry.contentBoxSize[0]?.inlineSize,
-                height: entry.contentBoxSize[0]?.blockSize
+                width: contentBoxSize.inlineSize,
+                height: contentBoxSize.blockSize
             });
         }
     });
@@ -283,6 +289,7 @@ async function main(canvasElement: HTMLCanvasElement) {
         });
 
         renderPass.setPipeline(pipeline);
+
         renderPass.setVertexBuffer(0, vertexBuffer);
         renderPass.setIndexBuffer(indexBuffer, indexFormat);
 
