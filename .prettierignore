@@ -8,3 +8,4 @@ build/
 .swc
 dist/
 lib/
+docs/google-codelabs.html

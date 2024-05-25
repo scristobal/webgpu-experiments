@@ -13,7 +13,7 @@ export default defineConfig({
         rollupOptions: {
             input: {
                 main: resolve(__dirname, 'index.html'),
-                gameOfLife: resolve(__dirname, 'game-of-life/index.html'),
+                'game-of-webgpu': resolve(__dirname, 'game-of-webgpu/index.html'),
                 renderer: resolve(__dirname, 'renderer/index.html')
             }
         }
