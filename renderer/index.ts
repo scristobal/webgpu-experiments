@@ -190,7 +190,24 @@ async function main(canvasElement: HTMLCanvasElement) {
         },
         fragment: {
             module: shaderModule,
-            targets: [{ format: canvasFormat }]
+            targets: [
+                {
+                    format: canvasFormat,
+                    blend: {
+                        color: {
+                            srcFactor: 'src-alpha',
+                            dstFactor: 'one-minus-src-alpha',
+                            operation: 'add'
+                        },
+                        alpha: {
+                            srcFactor: 'one',
+                            dstFactor: 'one-minus-src-alpha',
+                            operation: 'add'
+                        }
+                    },
+                    writeMask: GPUColorWrite.ALL
+                }
+            ]
         },
         depthStencil: {
             format: depthTexture.format,
