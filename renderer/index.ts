@@ -20,11 +20,16 @@ async function main(canvasElement: HTMLCanvasElement) {
     // vertices data
 
     // prettier-ignore
+    // 3--0
+    // |  |
+    // 2--1
     const verticesData = new Float32Array([
-         1,  1,  1,    1, 0,
-         1, -1,  1,    1, 1,
-        -1, -1,  1,    0, 1,
-        -1,  1,  1,    0, 0
+    //   clip space    texture
+    //   x,  y,  z,    u, v
+         1,  1,  1,    1, 0,  // 0
+         1, -1,  1,    1, 1,  // 1
+        -1, -1,  1,    0, 1,  // 2
+        -1,  1,  1,    0, 0   // 3
     ]);
 
     const vertexBuffer: GPUBuffer = device.createBuffer({
@@ -36,6 +41,7 @@ async function main(canvasElement: HTMLCanvasElement) {
 
     const vertexBufferLayout: GPUVertexBufferLayout = {
         arrayStride: 3 * 4 + 2 * 4,
+        stepMode: 'vertex', // optional
         attributes: [
             {
                 shaderLocation: 0,
@@ -53,9 +59,14 @@ async function main(canvasElement: HTMLCanvasElement) {
     // indexing
 
     // prettier-ignore
+    // 3---0
+    // |  /|
+    // | / |
+    // |/  |
+    // 2---1
     const indexData = new Uint32Array([
-        2, 1, 0,
-        2, 0, 3
+        3, 2, 0,
+        2, 1, 0
     ]);
 
     const indexBuffer: GPUBuffer = device.createBuffer({
