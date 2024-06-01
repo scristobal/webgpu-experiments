@@ -268,7 +268,7 @@ async function gameOfWebGPU() {
         ]
     });
 
-    const cellBindGroup: GPUBindGroup = device.createBindGroup({
+    let cellComputeBindGroup: GPUBindGroup = device.createBindGroup({
         label: 'Cell renderer bind group A',
         layout: cellBindGroupLayout,
         entries: [
@@ -283,7 +283,7 @@ async function gameOfWebGPU() {
         ]
     });
 
-    const cellBindGroupSwapped: GPUBindGroup = device.createBindGroup({
+    let cellRenderBindGroup: GPUBindGroup = device.createBindGroup({
         label: 'Cell renderer bind group B',
         layout: cellBindGroupLayout,
         entries: [
@@ -339,14 +339,6 @@ async function gameOfWebGPU() {
     // Render loop
 
     const updateGrid = () => {
-        // each update `cellBindGroup` and `cellBindGroupSwapped` must be swapped,
-        // the former is used to compute the new state and the other is used to render
-        // this variable helps keep track of how groups were used on last iteration
-        const cellComputeBindGroup = even_pass ? cellBindGroup : cellBindGroupSwapped;
-        const cellRenderBindGroup = even_pass ? cellBindGroupSwapped : cellBindGroup;
-
-        even_pass = !even_pass;
-
         // a new encoder is required every update
         const encoder = device.createCommandEncoder();
 
@@ -393,11 +385,13 @@ async function gameOfWebGPU() {
         const commandBuffer = encoder.finish();
         device.queue.submit([commandBuffer]);
 
+        // each update `cellComputeBindGroup` and `cellRenderBindGroup` must be swapped,
+        // the former is used to compute the new state while the latter is used to render
+        [cellComputeBindGroup, cellRenderBindGroup] = [cellRenderBindGroup, cellComputeBindGroup];
+
         // Schedule next frame
         requestAnimationFrame(updateGrid);
     };
-
-    let even_pass = true;
 
     return updateGrid;
 }
