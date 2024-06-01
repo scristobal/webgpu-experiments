@@ -1,4 +1,4 @@
-async function main(canvasElement: HTMLCanvasElement) {
+async function renderer(canvasElement: HTMLCanvasElement) {
     // setup
 
     const adapter = await navigator.gpu.requestAdapter();
@@ -319,11 +319,14 @@ async function main(canvasElement: HTMLCanvasElement) {
     return { render };
 }
 
+const version = import.meta.env.VITE_APP_VERSION;
+console.log(`Using version ${version}`);
+
 const canvasElement = document.querySelector('canvas') ?? document.createElement('canvas');
 
 if (!document.contains(canvasElement)) document.body.append(canvasElement);
 
-main(canvasElement)
-    .then(({ render }) => render())
+renderer(canvasElement)
+    .then(({ render }) => requestAnimationFrame(render))
     .catch((e) => alert(e))
     .finally(() => console.log('done', new Date()));
