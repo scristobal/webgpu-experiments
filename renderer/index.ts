@@ -316,7 +316,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         requestAnimationFrame(render);
     }
 
-    return { render };
+    return render;
 }
 
 const version = import.meta.env.VITE_APP_VERSION;
@@ -327,6 +327,6 @@ const canvasElement = document.querySelector('canvas') ?? document.createElement
 if (!document.contains(canvasElement)) document.body.append(canvasElement);
 
 renderer(canvasElement)
-    .then(({ render }) => requestAnimationFrame(render))
-    .catch((e) => alert(e))
+    .then(requestAnimationFrame)
+    .catch(alert)
     .finally(() => console.log('done', new Date()));
