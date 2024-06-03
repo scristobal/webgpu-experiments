@@ -20,7 +20,7 @@
         "noImplicitAny": true,
         "noImplicitReturns": true,
         "noImplicitThis": true,
-        "noUncheckedIndexedAccess": true,
+        "noUncheckedIndexedAccess": false,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "removeComments": true,

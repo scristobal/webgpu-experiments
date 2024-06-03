@@ -1,3 +1,48 @@
+const mat4 = {
+    identity() {
+        return this.scaling([1, 1, 1]);
+    },
+
+    scaling([sx, sy, sz]: [number, number, number]) {
+        // prettier-ignore
+        return new Float32Array([
+            sx, 0, 0, 0, // <-- column 0
+             0,sy, 0, 0, // <-- column 1
+             0, 0,sz, 0, // <-- column 2
+             0, 0, 0, 1  // <-- column 3
+        ]);
+    },
+
+    multiply(lhs: Float32Array, rhs: Float32Array) {
+        // prettier-ignore
+        return new Float32Array([
+            lhs[0] * rhs[0] + lhs[4] * rhs[1] + lhs[8] * rhs[2] + lhs[12] * rhs[3],
+            lhs[1] * rhs[0] + lhs[5] * rhs[1] + lhs[9] * rhs[2] + lhs[13] * rhs[3],
+            lhs[2] * rhs[0] + lhs[6] * rhs[1] + lhs[10] * rhs[2] + lhs[14] * rhs[3],
+            lhs[3] * rhs[0] + lhs[7] * rhs[1] + lhs[11] * rhs[2] + lhs[15] * rhs[3],
+
+            lhs[0] * rhs[4] + lhs[4] * rhs[5] + lhs[8] * rhs[6] + lhs[12] * rhs[7],
+            lhs[1] * rhs[4] + lhs[5] * rhs[5] + lhs[9] * rhs[6] + lhs[13] * rhs[7],
+            lhs[2] * rhs[4] + lhs[6] * rhs[5] + lhs[10] * rhs[6] + lhs[14] * rhs[7],
+            lhs[3] * rhs[4] + lhs[7] * rhs[5] + lhs[11] * rhs[6] + lhs[15] * rhs[7],
+
+            lhs[0] * rhs[8] + lhs[4] * rhs[9] + lhs[8] * rhs[10] + lhs[12] * rhs[11],
+            lhs[1] * rhs[8] + lhs[5] * rhs[9] + lhs[9] * rhs[10] + lhs[13] * rhs[11],
+            lhs[2] * rhs[8] + lhs[6] * rhs[9] + lhs[10] * rhs[10] + lhs[14] * rhs[11],
+            lhs[3] * rhs[8] + lhs[7] * rhs[9] + lhs[11] * rhs[10] + lhs[15] * rhs[11],
+
+            lhs[0] * rhs[12] + lhs[4] * rhs[13] + lhs[8] * rhs[14] + lhs[12] * rhs[15],
+            lhs[1] * rhs[12] + lhs[5] * rhs[13] + lhs[9] * rhs[14] + lhs[13] * rhs[15],
+            lhs[2] * rhs[12] + lhs[6] * rhs[13] + lhs[10] * rhs[14] + lhs[14] * rhs[15],
+            lhs[3] * rhs[12] + lhs[7] * rhs[13] + lhs[11] * rhs[14] + lhs[15] * rhs[15]
+        ]);
+    },
+
+    scale(m: Float32Array, s: number) {
+        this.multiply(m, this.scaling([s, s, s]));
+    }
+};
+
 async function renderer(canvasElement: HTMLCanvasElement) {
     // setup
 
@@ -59,11 +104,11 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     // indexing
 
     // prettier-ignore
-    // 3---0
-    // |  /|
-    // | / |
-    // |/  |
-    // 2---1
+    // 3 - - - 0
+    // |     / |
+    // |   /   |
+    // | /     |
+    // 2 - - - 1
     const indexData = new Uint32Array([
         3, 2, 0,
         2, 1, 0
@@ -98,7 +143,15 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     device.queue.copyExternalImageToTexture({ source }, { texture }, { width: source.width, height: source.height });
 
-    // uniforms
+    // depth texture
+
+    let depthTexture = device.createTexture({
+        size: [canvasElement.width, canvasElement.height],
+        format: 'depth32float',
+        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT
+    });
+
+    // uniforms - resolution
 
     const resolutionData = new Float32Array([canvasElement.width, canvasElement.height]);
 
@@ -109,13 +162,16 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     device.queue.writeBuffer(resolutionBuffer, 0, resolutionData);
 
-    // depth
+    // uniforms - camera transformation matrix
 
-    let depthTexture = device.createTexture({
-        size: [canvasElement.width, canvasElement.height],
-        format: 'depth32float',
-        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT
+    const cameraData = mat4.identity();
+
+    const cameraBuffer = device.createBuffer({
+        size: cameraData.byteLength,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
+
+    device.queue.writeBuffer(cameraBuffer, 0, cameraData);
 
     // bindings
 
@@ -128,11 +184,16 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             },
             {
                 binding: 1,
+                visibility: GPUShaderStage.VERTEX,
+                buffer: { type: 'uniform' }
+            },
+            {
+                binding: 2,
                 visibility: GPUShaderStage.FRAGMENT,
                 sampler: { type: 'filtering' }
             },
             {
-                binding: 2,
+                binding: 3,
                 visibility: GPUShaderStage.FRAGMENT,
                 texture: { sampleType: 'float' }
             }
@@ -148,10 +209,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             },
             {
                 binding: 1,
-                resource: device.createSampler()
+                resource: { buffer: cameraBuffer }
             },
             {
                 binding: 2,
+                resource: device.createSampler()
+            },
+            {
+                binding: 3,
                 resource: texture.createView()
             }
         ]
@@ -163,6 +228,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         code: /* wgsl */ `
 
         @group(0) @binding(0) var<uniform> resolution: vec2f;
+        @group(0) @binding(1) var<uniform> camera: mat4x4<f32>;
 
         struct VertexOutput {
             @builtin(position) position: vec4f,
@@ -172,17 +238,17 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         @vertex fn vertex_main(@location(0) position: vec3f, @location(1) texture_coords: vec2f ) -> VertexOutput {
 
             var ratio = resolution.x / resolution.y;
-            var scale = 0.6;
 
             var output: VertexOutput;
-            output.position =  vec4f(scale * position.x / ratio, scale * position.y, position.z, 1.0);
+            output.position = camera * vec4f( position.x / ratio,  position.y, position.z, 1.0);
+
             output.texture_coords = texture_coords;
 
             return output;
         }
 
-        @group(0) @binding(1) var texture_sampler: sampler;
-        @group(0) @binding(2) var texture: texture_2d<f32>;
+        @group(0) @binding(2) var texture_sampler: sampler;
+        @group(0) @binding(3) var texture: texture_2d<f32>;
 
 
         @fragment fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
@@ -328,5 +394,5 @@ if (!document.contains(canvasElement)) document.body.append(canvasElement);
 
 renderer(canvasElement)
     .then(requestAnimationFrame)
-    .catch(alert)
+    .catch(console.error)
     .finally(() => console.log('done', new Date()));
