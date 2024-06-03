@@ -39,7 +39,7 @@ const mat4 = {
     },
 
     scale(m: Float32Array, s: number) {
-        this.multiply(m, this.scaling([s, s, s]));
+        return this.multiply(m, this.scaling([s, s, s]));
     }
 };
 
@@ -164,7 +164,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // uniforms - camera transformation matrix
 
-    const cameraData = mat4.identity();
+    let cameraData = mat4.identity();
 
     const cameraBuffer = device.createBuffer({
         size: cameraData.byteLength,
@@ -332,10 +332,28 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     observer.observe(canvasElement);
 
+    let lastUpdate = performance.now();
+
+    let needsResize = false;
+
+    function update() {
+        const now = performance.now();
+
+        needsResize = resizeCanvasToDisplaySize(canvasElement);
+
+        const delta = now - lastUpdate;
+
+        const scale = 0.2 + (Math.sin(now / 250) + 1) / 4;
+
+        cameraData.set(mat4.scale(mat4.identity(), scale));
+
+        lastUpdate = now;
+    }
+
     // render
 
     function render() {
-        if (resizeCanvasToDisplaySize(canvasElement)) {
+        if (needsResize) {
             depthTexture = device.createTexture({
                 size: [canvasElement.width, canvasElement.height],
                 format: depthTexture.format,
@@ -345,6 +363,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             resolutionData.set([canvasElement.width, canvasElement.height]);
             device.queue.writeBuffer(resolutionBuffer, 0, resolutionData);
         }
+
+        device.queue.writeBuffer(cameraBuffer, 0, cameraData);
 
         const encoder = device.createCommandEncoder();
 
@@ -378,11 +398,15 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         const commandBuffer = encoder.finish();
         device.queue.submit([commandBuffer]);
-
-        requestAnimationFrame(render);
     }
 
-    return render;
+    function mainLoop() {
+        update();
+        render();
+        requestAnimationFrame(mainLoop);
+    }
+
+    return mainLoop;
 }
 
 const version = import.meta.env.VITE_APP_VERSION;
