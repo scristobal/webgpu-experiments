@@ -13,6 +13,16 @@ const mat4 = {
         ]);
     },
 
+    translation([dx, dy, dz]: [number, number, number]) {
+        // prettier-ignore
+        return new Float32Array([
+             1,  0,  0,  0, // <-- column 0
+             0,  1,  0,  0, // <-- column 1
+             0,  0,  1,  0, // <-- column 2
+            dx, dy, dz,  1  // <-- column 3
+        ]);
+    },
+
     multiply(lhs: Float32Array, rhs: Float32Array) {
         // prettier-ignore
         return new Float32Array([
@@ -40,6 +50,10 @@ const mat4 = {
 
     scale(m: Float32Array, s: number) {
         return this.multiply(m, this.scaling([s, s, s]));
+    },
+
+    translate(m: Float32Array, [dx, dy, dz]: [number, number, number]) {
+        return this.multiply(m, this.translation([dx, dy, dz]));
     }
 };
 
