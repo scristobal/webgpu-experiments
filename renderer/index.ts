@@ -1,25 +1,25 @@
 const mat4 = {
     identity() {
-        return this.scaling([1, 1, 1]);
+        return this.scaling(new Float32Array([1, 1, 1]));
     },
 
-    scaling([sx, sy, sz]: [number, number, number]) {
+    scaling(v: Float32Array) {
         // prettier-ignore
         return new Float32Array([
-            sx, 0, 0, 0, // <-- column 0
-             0,sy, 0, 0, // <-- column 1
-             0, 0,sz, 0, // <-- column 2
-             0, 0, 0, 1  // <-- column 3
+            v[0],    0,    0,   0, // <-- column 0
+               0, v[1],    0,   0, // <-- column 1
+               0,    0, v[2],   0, // <-- column 2
+               0,    0,    0,   1  // <-- column 3
         ]);
     },
 
-    translation([dx, dy, dz]: [number, number, number]) {
+    translation(v: Float32Array) {
         // prettier-ignore
         return new Float32Array([
              1,  0,  0,  0, // <-- column 0
              0,  1,  0,  0, // <-- column 1
              0,  0,  1,  0, // <-- column 2
-            dx, dy, dz,  1  // <-- column 3
+            v[0], v[1], v[2],  1  // <-- column 3
         ]);
     },
 
@@ -48,12 +48,12 @@ const mat4 = {
         ]);
     },
 
-    scale(m: Float32Array, s: number) {
-        return this.multiply(m, this.scaling([s, s, s]));
+    scale(m: Float32Array, v: Float32Array) {
+        return this.multiply(m, this.scaling(v));
     },
 
-    translate(m: Float32Array, [dx, dy, dz]: [number, number, number]) {
-        return this.multiply(m, this.translation([dx, dy, dz]));
+    translate(m: Float32Array, v: Float32Array) {
+        return this.multiply(m, this.translation(new Float32Array(v)));
     }
 };
 
@@ -357,9 +357,16 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         const delta = now - lastUpdate;
 
-        const scale = 0.2 + (Math.sin(now / 250) + 1) / 4;
+        const scale = 0.5 + (Math.sin(now / 250) + 1) / 4;
 
-        cameraData.set(mat4.scale(mat4.identity(), scale));
+        const translate = new Float32Array([Math.cos(now / 500), Math.sin(now / 500), 0]);
+
+        const m = mat4.translate(
+            mat4.scale(mat4.identity(), new Float32Array([scale, scale, scale])),
+            new Float32Array(translate)
+        );
+
+        cameraData.set(m);
 
         lastUpdate = now;
     }
