@@ -1,4 +1,4 @@
-import { identity, scale, translate } from './mat4';
+import { identity, scale, scaling, translate } from './mat4';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
     // setup
@@ -304,7 +304,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         const v = new Float32Array([Math.cos(now / 500), Math.sin(now / 500), 0]);
 
-        const m = translate(scale(identity(), new Float32Array([s, s, s])), new Float32Array(v));
+        const m = translate(scaling(new Float32Array([s, s, s])), new Float32Array(v));
 
         cameraData.set(m);
 
