@@ -52,5 +52,5 @@ export function scale(m: Float32Array, v: Float32Array) {
 }
 
 export function translate(m: Float32Array, v: Float32Array) {
-    return multiply(m, translation(new Float32Array(v)));
+    return multiply(m, translation(v));
 }
