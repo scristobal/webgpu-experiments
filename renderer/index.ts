@@ -1,4 +1,4 @@
-import { identity, scale, scaling, translate } from './mat4';
+import { identity, translate } from './mat4';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
     // setup
@@ -197,7 +197,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             var ratio = resolution.x / resolution.y;
 
             var output: VertexOutput;
-            output.position = camera * vec4f( position.x / ratio,  position.y, position.z, 1.0);
+            output.position = camera * vec4f( 0.2 * position.x / ratio,  0.2 * position.y, position.z, 1.0);
 
             output.texture_coords = texture_coords;
 
@@ -300,11 +300,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         const delta = now - lastUpdate;
 
-        const s = 0.5 + (Math.sin(now / 250) + 1) / 4;
+        const v = new Float32Array([0.8 * Math.cos(now / 500), 0.8 * Math.sin(now / 500), 0]);
 
-        const v = new Float32Array([Math.cos(now / 500), Math.sin(now / 500), 0]);
-
-        const m = translate(scaling(new Float32Array([s, s, s])), new Float32Array(v));
+        const m = translate(identity(), new Float32Array(v));
 
         cameraData.set(m);
 
