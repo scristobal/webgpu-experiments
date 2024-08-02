@@ -2,16 +2,15 @@
  * Quick check for WebGPU capabilities
  */
 
-async function capable() {
-    if (!navigator.gpu) return false;
+const isCapable = async () => {
+    if (!navigator.gpu) {
+        return false;
+    }
 
-    const adapter = await navigator.gpu.requestAdapter();
-    if (!adapter) return false;
+    const adapter = await navigator.gpu.requestAdapter(),
+        context = document.createElement('canvas').getContext('webgpu');
 
-    const context = document.createElement('canvas').getContext('webgpu');
-    if (!context) return false;
+    return adapter && context;
+};
 
-    return true;
-}
-
-capable().then((capable) => document.dispatchEvent(new CustomEvent('capable', { detail: capable })));
+isCapable().then((capable) => document.dispatchEvent(new CustomEvent('capable', { detail: capable })));
