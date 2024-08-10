@@ -4,7 +4,7 @@
     "devDependencies": {
         "@eslint/js": "10.0.0",
         "@webgpu/types": "^0.1.40",
-        "eslint": "9.8.0",
+        "eslint": "9.9.0",
         "eslint-config-prettier": "^9.1.0",
         "globals": "^15.3.0",
         "hint": "^7.1.11",
