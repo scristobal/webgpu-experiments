@@ -3,6 +3,7 @@
     "description": "",
     "devDependencies": {
         "@eslint/js": "10.0.0",
+        "@typescript-eslint/parser": "^8.0.1",
         "@webgpu/types": "^0.1.44",
         "eslint": "9.9.0",
         "eslint-config-prettier": "^9.1.0",

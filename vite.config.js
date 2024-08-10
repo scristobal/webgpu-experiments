@@ -1,22 +1,23 @@
+import * as child from 'child_process';
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
-
-import * as child from 'child_process';
 
 const commitHash = child.execSync('git rev-parse --short HEAD').toString();
 
 // https://vitejs.dev/config/
 export default defineConfig({
-    define: { 'import.meta.env.VITE_APP_VERSION': JSON.stringify(commitHash) },
+    appType: 'mpa',
     build: {
-        target: 'esnext',
         rollupOptions: {
             input: {
-                main: resolve(__dirname, 'index.html'),
+                // eslint-disable-next-line @typescript-eslint/naming-convention
                 'game-of-webgpu': resolve(__dirname, 'game-of-webgpu/index.html'),
+                main: resolve(__dirname, 'index.html'),
                 renderer: resolve(__dirname, 'renderer/index.html')
             }
-        }
+        },
+        target: 'esnext'
     },
-    appType: 'mpa'
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    define: { 'import.meta.env.VITE_APP_VERSION': JSON.stringify(commitHash) }
 });

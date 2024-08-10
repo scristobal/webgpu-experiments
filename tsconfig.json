@@ -33,5 +33,5 @@
         "useDefineForClassFields": false
     },
     "exclude": ["node_modules", "lib"],
-    "include": ["**/*.ts"]
+    "include": ["**/*.ts", "**/*.js"]
 }
