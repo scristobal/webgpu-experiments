@@ -13,7 +13,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const canvasFormat = navigator.gpu.getPreferredCanvasFormat();
 
-    const canvasContext = canvasElement.getContext('webgpu')!;
+    const canvasContext = canvasElement.getContext('webgpu');
 
     if (!canvasContext) throw new Error('Unable to get WebGPU canvas context');
 
@@ -121,7 +121,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // uniforms - camera transformation matrix
 
-    let cameraData = identity();
+    const cameraData = identity();
 
     const cameraBuffer = device.createBuffer({
         size: cameraData.byteLength,
@@ -312,6 +312,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     // render
 
     function render() {
+        if (!canvasContext) throw new Error('Canvas context lost');
         if (needsResize) {
             depthTexture = device.createTexture({
                 size: [canvasElement.width, canvasElement.height],
