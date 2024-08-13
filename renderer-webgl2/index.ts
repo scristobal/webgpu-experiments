@@ -88,11 +88,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
 
-    const vertex = new Float32Array([
-        -1, -1,
-        0, 1,
-        1, -1
-    ]);
+    const vertex = new Float32Array([-1, -1, 0, 1, 1, -1]);
 
     gl.bufferData(gl.ARRAY_BUFFER, vertex, gl.STATIC_DRAW);
 
@@ -111,11 +107,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const indices = new Uint16Array([0, 1, 2]);
 
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
-
-
-
-
-
 
     // resize
 
