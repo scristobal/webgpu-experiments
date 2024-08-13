@@ -84,14 +84,17 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
 
-    const positionBuffer = gl.createBuffer();
+    const vertexBuffer = gl.createBuffer();
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
 
-    // x_0, y_0, x_1, y_1, x_2, y_2
-    const positions = new Float32Array([-1, -1, 0, 1, 1, -1]);
+    const vertex = new Float32Array([
+        -1, -1,
+        0, 1,
+        1, -1
+    ]);
 
-    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, vertex, gl.STATIC_DRAW);
 
     const vertexArrayObject = gl.createVertexArray();
 
@@ -100,6 +103,19 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.enableVertexAttribArray(positionAttributeLocation);
 
     gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
+    const indexBuffer = gl.createBuffer();
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+
+    const indices = new Uint16Array([0, 1, 2]);
+
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+
+
+
+
 
     // resize
 
@@ -182,7 +198,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         // gl.bindVertexArray(vertexArrayObject);
 
         // execute the program
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        // gl.drawArrays(gl.TRIANGLES, 0, 3);
+        gl.drawElements(gl.TRIANGLES, 3, gl.UNSIGNED_SHORT, 0);
     }
 
     function mainLoop() {
