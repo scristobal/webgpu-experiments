@@ -20,11 +20,18 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         #pragma vscode_glsllint_stage: vert
 
 
-        in vec4 a_position;
+        in vec3 a_position;
+        in vec2 a_texCoord;
+
+        uniform vec2 u_resolution;
+
+        out vec2 v_texCoord;
 
         // all shaders have a main function
         void main() {
-            gl_Position = a_position;
+            float ratio = u_resolution.x / u_resolution.y;
+            gl_Position = vec4(0.2*a_position.x/ratio, 0.2 * a_position.y, a_position.z, 1);
+            v_texCoord = a_texCoord;
         }`
     );
 
@@ -48,10 +55,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         precision highp float;
 
+        uniform sampler2D u_image;
+
+        in vec2 v_texCoord;
+
         out vec4 outColor;
 
         void main() {
-            outColor = vec4(1, 0, 0, 1);
+            outColor = texture(u_image, v_texCoord);
         }`
     );
 
@@ -80,33 +91,119 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         throw new Error('Failed to link the program');
     }
 
-    // attributes, vertex data
+    // use the program
+    gl.useProgram(program);
 
-    const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
+    // vao
 
-    const vertexBuffer = gl.createBuffer();
+    const verticesArrayObject = gl.createVertexArray();
+    gl.bindVertexArray(verticesArrayObject);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+    // vertices data
 
-    const vertex = new Float32Array([-1, -1, 0, 1, 1, -1]);
+    // prettier-ignore
+    // 3--0
+    // |  |
+    // 2--1
+    const verticesPositionData = new Float32Array([
+        //   clip space
+        //   x,  y,  z,
+             1,  1,  0, // 0
+             1, -1,  0, // 1
+            -1, -1,  0, // 2
+            -1,  1,  0, // 3
+        ]);
 
-    gl.bufferData(gl.ARRAY_BUFFER, vertex, gl.STATIC_DRAW);
+    const verticesAttributeLocation = gl.getAttribLocation(program, 'a_position');
 
-    const vertexArrayObject = gl.createVertexArray();
+    const verticesPositionBuffer = gl.createBuffer();
 
-    gl.bindVertexArray(vertexArrayObject);
+    gl.bindBuffer(gl.ARRAY_BUFFER, verticesPositionBuffer);
 
-    gl.enableVertexAttribArray(positionAttributeLocation);
+    gl.bufferData(gl.ARRAY_BUFFER, verticesPositionData, gl.STATIC_DRAW);
 
-    gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(verticesAttributeLocation);
+
+    gl.vertexAttribPointer(verticesAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+
+    // prettier-ignore
+    // 3--0
+    // |  |
+    // 2--1
+    const verticesTextureData = new Float32Array([
+        // texture
+        //  u, v
+            1, 0,  // 0
+            1, 1,  // 1
+            0, 1,  // 2
+            0, 0   // 3
+    ]);
+
+    const verticesTextureLocation = gl.getAttribLocation(program, 'a_texCoord');
+
+    const verticesTextureBuffer = gl.createBuffer();
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, verticesTextureBuffer);
+
+    gl.bufferData(gl.ARRAY_BUFFER, verticesTextureData, gl.STATIC_DRAW);
+
+    gl.enableVertexAttribArray(verticesTextureLocation);
+
+    gl.vertexAttribPointer(verticesTextureLocation, 2, gl.FLOAT, false, 0, 0);
+
+    // vertices data indexing
 
     const indexBuffer = gl.createBuffer();
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 
-    const indices = new Uint16Array([0, 1, 2]);
+    // prettier-ignore
+    // 3 - - - 0
+    // |     / |
+    // |   /   |
+    // | /     |
+    // 2 - - - 1
+    const indicesData = new Uint16Array([
+        3, 2, 0,
+        2,1,0,
+    ]);
 
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicesData, gl.STATIC_DRAW);
+
+    // uniforms - resolution
+
+    const resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution');
+
+    gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+
+    // uniforms - texture
+
+    async function loadImageBitmap(url: string) {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        return await createImageBitmap(blob, { colorSpaceConversion: 'none' });
+    }
+
+    const url = '/avatar-1x.png';
+    const source = await loadImageBitmap(url);
+
+    const imageLocation = gl.getUniformLocation(program, 'u_image');
+
+    const texture = gl.createTexture();
+
+    gl.activeTexture(gl.TEXTURE0 + 0);
+
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+
+    gl.uniform1i(imageLocation, 0);
 
     // resize
 
@@ -175,22 +272,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         if (needsResize) {
             resolutionData.set([canvasElement.width, canvasElement.height]);
-            // set the view port and clean the canvas
             gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+            gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
         }
 
         gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        // use the program and draw stuff
-        gl.useProgram(program);
-
-        // is it necessary to bind the vertex array again?
-        // gl.bindVertexArray(vertexArrayObject);
-
-        // execute the program
-        // gl.drawArrays(gl.TRIANGLES, 0, 3);
-        gl.drawElements(gl.TRIANGLES, 3, gl.UNSIGNED_SHORT, 0);
+        gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
     }
 
     function mainLoop() {

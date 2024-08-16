@@ -58,7 +58,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         ]
     };
 
-    // indexing
+    // vertices data indexing
 
     // prettier-ignore
     // 3 - - - 0
@@ -66,17 +66,17 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     // |   /   |
     // | /     |
     // 2 - - - 1
-    const indexData = new Uint32Array([
+    const indicesData = new Uint32Array([
         3, 2, 0,
         2, 1, 0
     ]);
 
-    const indexBuffer: GPUBuffer = device.createBuffer({
-        size: indexData.byteLength,
+    const indicesBuffer: GPUBuffer = device.createBuffer({
+        size: indicesData.byteLength,
         usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST
     });
 
-    device.queue.writeBuffer(indexBuffer, 0, indexData);
+    device.queue.writeBuffer(indicesBuffer, 0, indicesData);
 
     const indexFormat: GPUIndexFormat = 'uint32';
 
@@ -183,6 +183,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const shaderModule: GPUShaderModule = device.createShaderModule({
         code: /* wgsl */ `
+
 
         @group(0) @binding(0) var<uniform> resolution: vec2f;
         @group(0) @binding(1) var<uniform> camera: mat4x4<f32>;
@@ -348,11 +349,11 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         renderPass.setPipeline(pipeline);
 
         renderPass.setVertexBuffer(0, vertexBuffer);
-        renderPass.setIndexBuffer(indexBuffer, indexFormat);
+        renderPass.setIndexBuffer(indicesBuffer, indexFormat);
 
         renderPass.setBindGroup(0, bindGroup);
 
-        renderPass.drawIndexed(indexData.length);
+        renderPass.drawIndexed(indicesData.length);
 
         renderPass.end();
 
