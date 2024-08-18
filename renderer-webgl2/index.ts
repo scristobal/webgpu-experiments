@@ -1,4 +1,4 @@
-import { identity, translate } from './mat4';
+import { identity, scaling, translate } from './mat4';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
     /**
@@ -41,7 +41,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         void main() {
             float ratio = u_resolution.x / u_resolution.y;
 
-            gl_Position = u_camera * vec4( 0.2 * a_position.x / ratio, 0.2 * a_position.y, a_position.z, 1);
+            gl_Position = u_camera * vec4( a_position.xyz, 1);
             v_texCoord = a_texCoord;
         }
 
@@ -203,10 +203,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicesData, gl.STATIC_DRAW);
 
     // enable culling of back facing (clock wise) triangles
-    // gl.enable(gl.CULL_FACE);
+    gl.enable(gl.CULL_FACE);
 
     // enable depth buffer
-    // gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.DEPTH_TEST);
 
     /**
      *
@@ -218,13 +218,17 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution');
 
-    gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+    const resolutionData = new Float32Array([canvasElement.width, canvasElement.height]);
+
+    gl.uniform1fv(resolutionUniformLocation, resolutionData);
 
     // uniforms - camera transformation matrix
 
     const cameraUniformLocation = gl.getUniformLocation(program, 'u_camera');
 
-    gl.uniformMatrix4fv(cameraUniformLocation, false, identity());
+    const cameraData = identity();
+
+    gl.uniformMatrix4fv(cameraUniformLocation, false, cameraData);
 
     // uniforms - texture
 
@@ -259,7 +263,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
      * Resize canvas and contents correctly
      *
      */
-    const resizeCanvasToDisplaySize = (() => {
+
+    const maxTextureDimension = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+
+    const resizeCanvasToDisplaySize = ((maxTextureDimension: number) => {
+        const canvasToSizeMap = new WeakMap<Element, { width: number; height: number }>();
+
         const observer = new ResizeObserver((entries) => {
             for (const entry of entries) {
                 const contentBoxSize = entry.contentBoxSize[0];
@@ -274,9 +283,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         });
 
         observer.observe(canvasElement);
-
-        const canvasToSizeMap = new WeakMap<Element, { width: number; height: number }>();
-        const maxTextureDimension = gl.getParameter(gl.MAX_TEXTURE_SIZE);
 
         return (canvas: HTMLCanvasElement) => {
             let { width, height } = canvasToSizeMap.get(canvas) || canvas;
@@ -293,7 +299,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
             return needResize;
         };
-    })();
+    })(maxTextureDimension);
 
     /**
      *
@@ -305,19 +311,23 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     let needsResize = false;
 
-    const resolutionData = new Float32Array([canvasElement.width, canvasElement.height]);
-    const cameraData = identity();
+    let ratio = resolutionData[0] / resolutionData[1];
 
     function update() {
         const now = performance.now();
 
         needsResize = resizeCanvasToDisplaySize(canvasElement);
 
+        if (needsResize) {
+            resolutionData.set([canvasElement.width, canvasElement.height]);
+            ratio = resolutionData[0] / resolutionData[1];
+        }
+
         const delta = now - lastUpdate;
 
         const v = new Float32Array([0.8 * Math.cos(now / 500), 0.8 * Math.sin(now / 500), 0]);
 
-        const m = translate(identity(), new Float32Array(v));
+        const m = translate(scaling(new Float32Array([0.2 / ratio, 0.2, 1])), new Float32Array(v));
 
         cameraData.set(m);
 
@@ -329,14 +339,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
      * Render loop
      *
      */
-
     function render() {
         if (!gl) throw new Error('Canvas context lost');
 
         if (needsResize) {
-            resolutionData.set([canvasElement.width, canvasElement.height]);
             gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-            gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+            gl.uniform2fv(resolutionUniformLocation, resolutionData);
         }
 
         gl.clearColor(0, 0, 0, 0);
@@ -352,7 +360,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
      * Main loop (main function return as Promise)
      *
      */
-
     function mainLoop() {
         update();
         render();

@@ -1,4 +1,4 @@
-import { identity, translate } from './mat4';
+import { identity, scaling, translate } from './mat4';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
     /**
@@ -198,10 +198,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         @vertex fn vertex_main(@location(0) position: vec3f, @location(1) texture_coords: vec2f ) -> VertexOutput {
 
-            var ratio = resolution.x / resolution.y;
 
             var output: VertexOutput;
-            output.position = camera * vec4f( 0.2 * position.x / ratio,  0.2 * position.y, position.z, 1.0);
+            output.position = camera * vec4f(position.xyz, 1.0);
 
             output.texture_coords = texture_coords;
 
@@ -257,44 +256,58 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         }
     });
 
-    // resize
+    /**
+     *
+     * Resize canvas and contents correctly
+     *
+     */
 
-    const canvasToSizeMap = new WeakMap<Element, { width: number; height: number }>();
     const maxTextureDimension = device.limits.maxTextureDimension2D;
 
-    function resizeCanvasToDisplaySize(canvas: HTMLCanvasElement) {
-        // Get the canvas's current display size
-        let { width, height } = canvasToSizeMap.get(canvas) || canvas;
+    const resizeCanvasToDisplaySize = ((maxTextureDimension: number) => {
+        const canvasToSizeMap = new WeakMap<Element, { width: number; height: number }>();
 
-        // Make sure it's valid for WebGPU
-        width = Math.max(1, Math.min(width ?? maxTextureDimension, maxTextureDimension));
-        height = Math.max(1, Math.min(height ?? maxTextureDimension, maxTextureDimension));
+        const observer = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                const contentBoxSize = entry.contentBoxSize[0];
 
-        // Only if the size is different, set the canvas size
-        const needResize = canvas.width !== width || canvas.height !== height;
-        if (needResize) {
-            canvas.width = width;
-            canvas.height = height;
-        }
-        return needResize;
-    }
+                if (!contentBoxSize) continue;
 
-    const observer = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-            const contentBoxSize = entry.contentBoxSize[0];
+                canvasToSizeMap.set(entry.target, {
+                    width: contentBoxSize.inlineSize,
+                    height: contentBoxSize.blockSize
+                });
+            }
+        });
 
-            if (!contentBoxSize) continue;
+        observer.observe(canvasElement);
 
-            canvasToSizeMap.set(entry.target, {
-                width: contentBoxSize.inlineSize,
-                height: contentBoxSize.blockSize
-            });
-        }
-    });
+        return (canvas: HTMLCanvasElement) => {
+            let { width, height } = canvasToSizeMap.get(canvas) || canvas;
 
-    observer.observe(canvasElement);
+            width = Math.max(1, Math.min(width ?? maxTextureDimension, maxTextureDimension));
+            height = Math.max(1, Math.min(height ?? maxTextureDimension, maxTextureDimension));
+
+            const needResize = canvas.width !== width || canvas.height !== height;
+
+            if (needResize) {
+                canvas.width = width;
+                canvas.height = height;
+            }
+
+            return needResize;
+        };
+    })(maxTextureDimension);
+
+    /**
+     *
+     * Update loop
+     *
+     */
 
     let lastUpdate = performance.now();
+
+    let ratio = resolutionData[0] / resolutionData[1];
 
     let needsResize = false;
 
@@ -303,30 +316,37 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         needsResize = resizeCanvasToDisplaySize(canvasElement);
 
+        if (needsResize) {
+            resolutionData.set([canvasElement.width, canvasElement.height]);
+            ratio = resolutionData[0] / resolutionData[1];
+        }
+
         const delta = now - lastUpdate;
 
         const v = new Float32Array([0.8 * Math.cos(now / 500), 0.8 * Math.sin(now / 500), 0]);
 
-        const m = translate(identity(), new Float32Array(v));
+        const m = translate(scaling(new Float32Array([0.2 / ratio, 0.2, 1])), new Float32Array(v));
 
         cameraData.set(m);
 
         lastUpdate = now;
     }
 
-    // render
-
+    /**
+     *
+     * Render loop
+     *
+     */
     function render() {
         if (!canvasContext) throw new Error('Canvas context lost');
 
         if (needsResize) {
             depthTexture = device.createTexture({
-                size: [canvasElement.width, canvasElement.height],
+                size: resolutionData,
                 format: depthTexture.format,
                 usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
             });
 
-            resolutionData.set([canvasElement.width, canvasElement.height]);
             device.queue.writeBuffer(resolutionBuffer, 0, resolutionData);
         }
 
@@ -369,6 +389,11 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         device.queue.submit([commandBuffer]);
     }
 
+    /**
+     *
+     * Main loop (main function return as Promise)
+     *
+     */
     function mainLoop() {
         update();
         render();
