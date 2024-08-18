@@ -1,9 +1,9 @@
 import { identity, translate } from './mat4';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
-    /** 
+    /**
      *
-     * WebGK2 Setup
+     * WebGL2 setup
      *
      */
 
@@ -11,7 +11,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     if (!gl) throw new Error('WebGL2 not supported in this browser');
 
-    /** 
+    /**
      *
      * Shaders creation and compilation
      *
@@ -24,7 +24,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     if (!vertexShader) throw new Error('Failed to create shader');
 
     gl.shaderSource(
-        vertexShader, /* glsl */ `#version 300 es
+        vertexShader,
+        /* glsl */ `#version 300 es
 
         #pragma vscode_glsllint_stage: vert
 
@@ -33,17 +34,19 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         in vec2 a_texCoord;
 
         uniform vec2 u_resolution;
+        uniform mat4 u_camera;
 
         out vec2 v_texCoord;
 
-        // all shaders have a main function
         void main() {
             float ratio = u_resolution.x / u_resolution.y;
 
-            gl_Position = vec4(0.2*a_position.x/ratio, 0.2 * a_position.y, a_position.z, 1);
+            gl_Position = u_camera * vec4( 0.2 * a_position.x / ratio, 0.2 * a_position.y, a_position.z, 1);
             v_texCoord = a_texCoord;
         }
-    `);
+
+    `
+    );
 
     gl.compileShader(vertexShader);
 
@@ -75,7 +78,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         void main() {
             outColor = texture(u_image, v_texCoord);
-        }`
+        }
+
+        `
     );
 
     gl.compileShader(fragmentShader);
@@ -87,7 +92,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     }
 
     /**
-     * 
+     *
      * link both shaders into the program and use it
      *
      */
@@ -118,7 +123,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const verticesArrayObject = gl.createVertexArray();
     gl.bindVertexArray(verticesArrayObject);
 
-    /** 
+    /**
      *
      * Load vertices data into the program (shaders)
      *
@@ -133,10 +138,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const verticesPositionData = new Float32Array([
         //   clip space
         //   x,  y,  z,
-        1, 1, 0, // 0
-        1, -1, 0, // 1
-        -1, -1, 0, // 2
-        -1, 1, 0, // 3
+             1,  1,  0, // 0
+             1, -1,  0, // 1
+            -1, -1,  0, // 2
+            -1,  1,  0, // 3
     ]);
 
     const verticesAttributeLocation = gl.getAttribLocation(program, 'a_position');
@@ -197,9 +202,15 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicesData, gl.STATIC_DRAW);
 
+    // enable culling of back facing (clock wise) triangles
+    // gl.enable(gl.CULL_FACE);
+
+    // enable depth buffer
+    // gl.enable(gl.DEPTH_TEST);
+
     /**
      *
-     * Load uniforms into the program 
+     * Load uniforms into the program
      *
      */
 
@@ -208,6 +219,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution');
 
     gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+
+    // uniforms - camera transformation matrix
+
+    const cameraUniformLocation = gl.getUniformLocation(program, 'u_camera');
+
+    gl.uniformMatrix4fv(cameraUniformLocation, false, identity());
 
     // uniforms - texture
 
@@ -237,46 +254,46 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     gl.uniform1i(imageLocation, 0);
 
-    /** 
+    /**
      *
-     * Resice canvas and contents correctly
+     * Resize canvas and contents correctly
      *
      */
+    const resizeCanvasToDisplaySize = (() => {
+        const observer = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                const contentBoxSize = entry.contentBoxSize[0];
 
-    const canvasToSizeMap = new WeakMap<Element, { width: number; height: number }>();
-    const maxTextureDimension = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+                if (!contentBoxSize) continue;
 
-    function resizeCanvasToDisplaySize(canvas: HTMLCanvasElement) {
-        let { width, height } = canvasToSizeMap.get(canvas) || canvas;
+                canvasToSizeMap.set(entry.target, {
+                    width: contentBoxSize.inlineSize,
+                    height: contentBoxSize.blockSize
+                });
+            }
+        });
 
-        width = Math.max(1, Math.min(width ?? maxTextureDimension, maxTextureDimension));
-        height = Math.max(1, Math.min(height ?? maxTextureDimension, maxTextureDimension));
+        observer.observe(canvasElement);
 
-        const needResize = canvas.width !== width || canvas.height !== height;
+        const canvasToSizeMap = new WeakMap<Element, { width: number; height: number }>();
+        const maxTextureDimension = gl.getParameter(gl.MAX_TEXTURE_SIZE);
 
-        if (needResize) {
-            canvas.width = width;
-            canvas.height = height;
-        }
+        return (canvas: HTMLCanvasElement) => {
+            let { width, height } = canvasToSizeMap.get(canvas) || canvas;
 
-        return needResize;
-    }
+            width = Math.max(1, Math.min(width ?? maxTextureDimension, maxTextureDimension));
+            height = Math.max(1, Math.min(height ?? maxTextureDimension, maxTextureDimension));
 
-    const observer = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-            const contentBoxSize = entry.contentBoxSize[0];
+            const needResize = canvas.width !== width || canvas.height !== height;
 
-            if (!contentBoxSize) continue;
+            if (needResize) {
+                canvas.width = width;
+                canvas.height = height;
+            }
 
-            canvasToSizeMap.set(entry.target, {
-                width: contentBoxSize.inlineSize,
-                height: contentBoxSize.blockSize
-            });
-        }
-    });
-
-    observer.observe(canvasElement);
-
+            return needResize;
+        };
+    })();
 
     /**
      *
@@ -325,6 +342,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+        gl.uniformMatrix4fv(cameraUniformLocation, false, cameraData);
+
         gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
     }
 
@@ -354,6 +373,3 @@ renderer(canvasElement)
     .then(requestAnimationFrame)
     .catch(console.error)
     .finally(() => console.log('done', new Date()));
-
-
-

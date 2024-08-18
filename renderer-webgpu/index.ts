@@ -1,7 +1,11 @@
 import { identity, translate } from './mat4';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
-    // setup
+    /**
+     *
+     * WebGPU setup
+     *
+     */
 
     const adapter = await navigator.gpu.requestAdapter();
 
@@ -34,14 +38,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         -1,  1,  1,    0, 0   // 3
     ]);
 
-    const vertexBuffer: GPUBuffer = device.createBuffer({
+    const verticesBuffer: GPUBuffer = device.createBuffer({
         size: verticesData.byteLength,
         usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
     });
 
-    device.queue.writeBuffer(vertexBuffer, 0, verticesData);
+    device.queue.writeBuffer(verticesBuffer, 0, verticesData);
 
-    const vertexBufferLayout: GPUVertexBufferLayout = {
+    const verticesBufferLayout: GPUVertexBufferLayout = {
         arrayStride: 3 * 4 + 2 * 4,
         stepMode: 'vertex', // optional
         attributes: [
@@ -184,7 +188,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const shaderModule: GPUShaderModule = device.createShaderModule({
         code: /* wgsl */ `
 
-
         @group(0) @binding(0) var<uniform> resolution: vec2f;
         @group(0) @binding(1) var<uniform> camera: mat4x4<f32>;
 
@@ -212,6 +215,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         @fragment fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
             return textureSample(texture, texture_sampler, input.texture_coords);
         }
+
         `
     });
 
@@ -223,7 +227,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         layout: pipelineLayout,
         vertex: {
             module: shaderModule,
-            buffers: [vertexBufferLayout]
+            buffers: [verticesBufferLayout]
         },
         fragment: {
             module: shaderModule,
@@ -314,6 +318,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     function render() {
         if (!canvasContext) throw new Error('Canvas context lost');
+
         if (needsResize) {
             depthTexture = device.createTexture({
                 size: [canvasElement.width, canvasElement.height],
@@ -329,17 +334,20 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         const encoder = device.createCommandEncoder();
 
+        const canvasView = canvasContext.getCurrentTexture().createView();
+        const depthView = depthTexture.createView();
+
         const renderPass = encoder.beginRenderPass({
             colorAttachments: [
                 {
-                    view: canvasContext.getCurrentTexture().createView(),
+                    view: canvasView,
                     loadOp: 'clear',
                     clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
                     storeOp: 'store'
                 }
             ],
             depthStencilAttachment: {
-                view: depthTexture.createView(),
+                view: depthView,
                 depthLoadOp: 'clear',
                 depthClearValue: 1.0,
                 depthStoreOp: 'store'
@@ -348,7 +356,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         renderPass.setPipeline(pipeline);
 
-        renderPass.setVertexBuffer(0, vertexBuffer);
+        renderPass.setVertexBuffer(0, verticesBuffer);
         renderPass.setIndexBuffer(indicesBuffer, indexFormat);
 
         renderPass.setBindGroup(0, bindGroup);
