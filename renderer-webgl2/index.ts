@@ -313,9 +313,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     let ratio = resolutionData[0] / resolutionData[1];
 
-    function update() {
-        const now = performance.now();
+    let angle = 0;
 
+    function update(now: number) {
         needsResize = resizeCanvasToDisplaySize(canvasElement);
 
         if (needsResize) {
@@ -325,7 +325,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         const delta = now - lastUpdate;
 
-        const v = new Float32Array([0.8 * Math.cos(now / 500), 0.8 * Math.sin(now / 500), 0]);
+        angle += delta / 100;
+
+        const v = new Float32Array([0.8 * Math.cos(angle), 0.8 * Math.sin(angle), 0]);
 
         const m = translate(scaling(new Float32Array([0.2 / ratio, 0.2, 1])), new Float32Array(v));
 
@@ -360,8 +362,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
      * Main loop (main function return as Promise)
      *
      */
-    function mainLoop() {
-        update();
+    function mainLoop(now: number) {
+        update(now);
         render();
         requestAnimationFrame(mainLoop);
     }
