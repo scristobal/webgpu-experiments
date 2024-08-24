@@ -1,4 +1,4 @@
-import { identity, scaling, translate } from './mat4';
+import * as m4 from './mat4';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
     /**
@@ -43,9 +43,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
             gl_Position = u_camera * vec4( a_position.xyz, 1);
             v_texCoord = a_texCoord;
-        }
-
-    `
+        }`
     );
 
     gl.compileShader(vertexShader);
@@ -78,9 +76,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         void main() {
             outColor = texture(u_image, v_texCoord);
-        }
-
-        `
+        }`
     );
 
     gl.compileShader(fragmentShader);
@@ -226,7 +222,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const cameraUniformLocation = gl.getUniformLocation(program, 'u_camera');
 
-    const cameraData = identity();
+    const cameraData = m4.identity();
 
     gl.uniformMatrix4fv(cameraUniformLocation, false, cameraData);
 
@@ -257,6 +253,61 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
 
     gl.uniform1i(imageLocation, 0);
+
+    /**
+     *
+     * Capture keyboard events
+     *
+     */
+
+    const pressedKeys = {
+        up: false,
+        down: false,
+        left: false,
+        right: false
+    };
+
+    window.onkeydown = (e) => {
+        switch (e.key) {
+            case 'w':
+            case 'ArrowUp':
+                pressedKeys.up = true;
+                break;
+            case 'a':
+            case 'ArrowLeft':
+                pressedKeys.left = true;
+                break;
+            case 's':
+            case 'ArrowDown':
+                pressedKeys.down = true;
+                break;
+            case 'd':
+            case 'ArrowRight':
+                pressedKeys.right = true;
+                break;
+        }
+    };
+
+    window.onkeyup = (e) => {
+        switch (e.key) {
+            case 'w':
+            case 'ArrowUp':
+                pressedKeys.up = false;
+                break;
+            case 'a':
+            case 'ArrowLeft':
+                pressedKeys.left = false;
+                break;
+            case 's':
+            case 'ArrowDown':
+                pressedKeys.down = false;
+                break;
+            case 'd':
+            case 'ArrowRight':
+                pressedKeys.right = false;
+                break;
+        }
+    };
 
     /**
      *
@@ -311,9 +362,11 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     let needsResize = false;
 
-    let ratio = resolutionData[0] / resolutionData[1];
+    const center = { x: 0, y: 0 };
+    const speed = { x: 0.002, y: 0.002 };
 
-    let angle = 0;
+    const size = 0.2;
+    let ratio = resolutionData[0] / resolutionData[1];
 
     function update(now: number) {
         needsResize = resizeCanvasToDisplaySize(canvasElement);
@@ -325,11 +378,16 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         const delta = now - lastUpdate;
 
-        angle += delta / 100;
+        if (pressedKeys.right && center.x < 1) center.x += speed.x * delta;
+        if (pressedKeys.left && center.x > -1) center.x -= speed.x * delta;
+        if (pressedKeys.up && center.y < 1) center.y += speed.y * delta;
+        if (pressedKeys.down && center.y > -1) center.y -= speed.y * delta;
 
-        const v = new Float32Array([0.8 * Math.cos(angle), 0.8 * Math.sin(angle), 0]);
+        const v = new Float32Array(new Float32Array([center.x, center.y, 0]));
+        const t = m4.translate(m4.identity(), v);
 
-        const m = translate(scaling(new Float32Array([0.2 / ratio, 0.2, 1])), new Float32Array(v));
+        const s = new Float32Array([size / ratio, size, 1]);
+        const m = m4.scale(t, s);
 
         cameraData.set(m);
 
