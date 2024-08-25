@@ -1,4 +1,4 @@
-import * as m4 from './mat4';
+import { m4 } from './mat4';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
     /**
@@ -222,9 +222,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const cameraUniformLocation = gl.getUniformLocation(program, 'u_camera');
 
-    const cameraData = m4.identity();
+    const cameraData = m4.identity;
 
-    gl.uniformMatrix4fv(cameraUniformLocation, false, cameraData);
+    gl.uniformMatrix4fv(cameraUniformLocation, false, cameraData.data);
 
     // uniforms - texture
 
@@ -338,8 +338,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         return (canvas: HTMLCanvasElement) => {
             let { width, height } = canvasToSizeMap.get(canvas) || canvas;
 
-            width = Math.max(1, Math.min(width ?? maxTextureDimension, maxTextureDimension));
-            height = Math.max(1, Math.min(height ?? maxTextureDimension, maxTextureDimension));
+            width = Math.max(1, Math.min(width, maxTextureDimension));
+            height = Math.max(1, Math.min(height, maxTextureDimension));
 
             const needResize = canvas.width !== width || canvas.height !== height;
 
@@ -366,30 +366,37 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const speed = { x: 0.002, y: 0.002 };
 
     const size = 0.2;
-    let ratio = resolutionData[0] / resolutionData[1];
+    const ratio = resolutionData[0] / resolutionData[1];
+
+    let v = new Float32Array(new Float32Array([center.x, center.y, 0]));
+    let s = new Float32Array([size / ratio, size, 1]);
 
     function update(now: number) {
+        const delta = now - lastUpdate;
+
         needsResize = resizeCanvasToDisplaySize(canvasElement);
 
         if (needsResize) {
             resolutionData.set([canvasElement.width, canvasElement.height]);
-            ratio = resolutionData[0] / resolutionData[1];
+            const ratio = resolutionData[0] / resolutionData[1];
+            s = new Float32Array([size / ratio, size, 1]);
         }
 
-        const delta = now - lastUpdate;
+        const keypress = pressedKeys.right || pressedKeys.left || pressedKeys.up || pressedKeys.down;
 
-        if (pressedKeys.right && center.x < 1) center.x += speed.x * delta;
-        if (pressedKeys.left && center.x > -1) center.x -= speed.x * delta;
-        if (pressedKeys.up && center.y < 1) center.y += speed.y * delta;
-        if (pressedKeys.down && center.y > -1) center.y -= speed.y * delta;
+        if (keypress) {
+            if (pressedKeys.right && center.x < 1) center.x += speed.x * delta;
+            if (pressedKeys.left && center.x > -1) center.x -= speed.x * delta;
+            if (pressedKeys.up && center.y < 1) center.y += speed.y * delta;
+            if (pressedKeys.down && center.y > -1) center.y -= speed.y * delta;
 
-        const v = new Float32Array(new Float32Array([center.x, center.y, 0]));
-        const t = m4.translate(m4.identity(), v);
+            v = new Float32Array(new Float32Array([center.x, center.y, 0]));
+        }
 
-        const s = new Float32Array([size / ratio, size, 1]);
-        const m = m4.scale(t, s);
-
-        cameraData.set(m);
+        if (keypress || needsResize) {
+            const m = m4.identity.translate(v).scale(s);
+            cameraData.data.set(m.data);
+        }
 
         lastUpdate = now;
     }
@@ -410,7 +417,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        gl.uniformMatrix4fv(cameraUniformLocation, false, cameraData);
+        gl.uniformMatrix4fv(cameraUniformLocation, false, cameraData.data);
 
         gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
     }
