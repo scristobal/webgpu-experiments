@@ -315,37 +315,37 @@ async function renderer(canvasElement: HTMLCanvasElement) {
      *
      */
 
+    const canvasDisplaySize = new WeakMap<Element, { width: number; height: number }>();
+
+    const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+            const contentBoxSize = entry.contentBoxSize[0];
+
+            if (!contentBoxSize) continue;
+
+            canvasDisplaySize.set(entry.target, {
+                width: contentBoxSize.inlineSize,
+                height: contentBoxSize.blockSize
+            });
+        }
+    });
+
+    observer.observe(canvasElement);
+
     const maxTextureDimension = gl.getParameter(gl.MAX_TEXTURE_SIZE);
 
     const resizeCanvasToDisplaySize = ((maxTextureDimension: number) => {
-        const canvasToSizeMap = new WeakMap<Element, { width: number; height: number }>();
-
-        const observer = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                const contentBoxSize = entry.contentBoxSize[0];
-
-                if (!contentBoxSize) continue;
-
-                canvasToSizeMap.set(entry.target, {
-                    width: contentBoxSize.inlineSize,
-                    height: contentBoxSize.blockSize
-                });
-            }
-        });
-
-        observer.observe(canvasElement);
-
         return (canvas: HTMLCanvasElement) => {
-            let { width, height } = canvasToSizeMap.get(canvas) || canvas;
+            let { width: displayWidth, height: displayHeight } = canvasDisplaySize.get(canvas) || canvas;
 
-            width = Math.max(1, Math.min(width, maxTextureDimension));
-            height = Math.max(1, Math.min(height, maxTextureDimension));
+            displayWidth = Math.max(1, Math.min(displayWidth, maxTextureDimension));
+            displayHeight = Math.max(1, Math.min(displayHeight, maxTextureDimension));
 
-            const needResize = canvas.width !== width || canvas.height !== height;
+            const needResize = canvas.width !== displayWidth || canvas.height !== displayHeight;
 
             if (needResize) {
-                canvas.width = width;
-                canvas.height = height;
+                canvas.width = displayWidth;
+                canvas.height = displayHeight;
             }
 
             return needResize;
@@ -360,16 +360,15 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     let lastUpdate = performance.now();
 
-    let needsResize = false;
+    let needsResize = true;
 
     const center = { x: 0, y: 0 };
     const speed = { x: 0.002, y: 0.002 };
 
     const size = 0.2;
-    const ratio = resolutionData[0] / resolutionData[1];
 
-    let v = new Float32Array(new Float32Array([center.x, center.y, 0]));
-    let s = new Float32Array([size / ratio, size, 1]);
+    const v = new Float32Array(new Float32Array([center.x, center.y, 0]));
+    const s = new Float32Array([(canvasElement.height * size) / canvasElement.width, size, 1]);
 
     function update(now: number) {
         const delta = now - lastUpdate;
@@ -378,8 +377,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         if (needsResize) {
             resolutionData.set([canvasElement.width, canvasElement.height]);
-            const ratio = resolutionData[0] / resolutionData[1];
-            s = new Float32Array([size / ratio, size, 1]);
+            s.set([(canvasElement.height * size) / canvasElement.width, size, 1]);
         }
 
         const keypress = pressedKeys.right || pressedKeys.left || pressedKeys.up || pressedKeys.down;
@@ -390,12 +388,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             if (pressedKeys.up && center.y < 1) center.y += speed.y * delta;
             if (pressedKeys.down && center.y > -1) center.y -= speed.y * delta;
 
-            v = new Float32Array(new Float32Array([center.x, center.y, 0]));
+            v.set([center.x, center.y, 0]);
         }
 
         if (keypress || needsResize) {
-            const m = m4.identity.translate(v).scale(s);
-            cameraData.data.set(m.data);
+            m4.identity.translate(v).scale(s);
+            cameraData.data.set(m4.data);
         }
 
         lastUpdate = now;
