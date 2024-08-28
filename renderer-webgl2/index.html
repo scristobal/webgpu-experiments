@@ -17,11 +17,22 @@
                 margin: 0;
                 height: 100dvh;
                 background-color: black;
+                overflow: hidden;
             }
             canvas {
                 display: block;
                 width: 100%;
                 height: 100%;
+                /* https://bugs.chromium.org/p/chromium/issues/detail?id=993762 */
+                /* https://stackoverflow.com/questions/69867152/how-to-disable-filtering-on-canvas-with-webgpu-context */
+                animation: fix-image-rendering-bug 0.0001s;
+                image-rendering: pixelated;
+            }
+
+            @keyframes fix-image-rendering-bug {
+                to {
+                    opacity: 1;
+                }
             }
         </style>
         <script defer src="index.ts" type="module"></script>

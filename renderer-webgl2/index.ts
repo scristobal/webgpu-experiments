@@ -358,17 +358,17 @@ async function renderer(canvasElement: HTMLCanvasElement) {
      *
      */
 
-    let lastUpdate = performance.now();
-
     let needsResize = true;
 
+    // sprite initial state
     const center = { x: 0, y: 0 };
     const speed = { x: 0.002, y: 0.002 };
-
     const size = 0.2;
 
-    const v = new Float32Array(new Float32Array([center.x, center.y, 0]));
+    const v = new Float32Array([center.x, center.y, 0]);
     const s = new Float32Array([(canvasElement.height * size) / canvasElement.width, size, 1]);
+
+    let lastUpdate = performance.now();
 
     function update(now: number) {
         const delta = now - lastUpdate;
@@ -422,16 +422,16 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     /**
      *
-     * Main loop (main function return as Promise)
+     * Main loop
      *
      */
-    function mainLoop(now: number) {
+    function main(now: number) {
         update(now);
         render();
-        requestAnimationFrame(mainLoop);
+        requestAnimationFrame(main);
     }
 
-    return mainLoop;
+    return main;
 }
 
 const version = import.meta.env.VITE_APP_VERSION;
