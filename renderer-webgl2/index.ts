@@ -264,7 +264,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         up: false,
         down: false,
         left: false,
-        right: false
+        right: false,
+        turnLeft: false,
+        turnRight: false
     };
 
     window.onkeydown = (e) => {
@@ -284,6 +286,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             case 'd':
             case 'ArrowRight':
                 pressedKeys.right = true;
+                break;
+            case 'q':
+                pressedKeys.turnLeft = true;
+                break;
+            case 'e':
+                pressedKeys.turnRight = true;
                 break;
         }
     };
@@ -305,6 +313,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             case 'd':
             case 'ArrowRight':
                 pressedKeys.right = false;
+                break;
+            case 'q':
+                pressedKeys.turnLeft = false;
+                break;
+            case 'e':
+                pressedKeys.turnRight = false;
                 break;
         }
     };
@@ -365,8 +379,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const speed = { x: 0.002, y: 0.002 };
     const size = 0.2;
 
-    const v = new Float32Array([center.x, center.y, 0]);
-    const s = new Float32Array([(canvasElement.height * size) / canvasElement.width, size, 1]);
+    let angle = 0;
+    const rotationSpeed = 0.01;
 
     let lastUpdate = performance.now();
 
@@ -377,22 +391,31 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         if (needsResize) {
             resolutionData.set([canvasElement.width, canvasElement.height]);
-            s.set([(canvasElement.height * size) / canvasElement.width, size, 1]);
         }
 
-        const keypress = pressedKeys.right || pressedKeys.left || pressedKeys.up || pressedKeys.down;
+        const keypress =
+            pressedKeys.right ||
+            pressedKeys.left ||
+            pressedKeys.up ||
+            pressedKeys.down ||
+            pressedKeys.turnLeft ||
+            pressedKeys.turnRight;
 
         if (keypress) {
             if (pressedKeys.right && center.x < 1) center.x += speed.x * delta;
             if (pressedKeys.left && center.x > -1) center.x -= speed.x * delta;
             if (pressedKeys.up && center.y < 1) center.y += speed.y * delta;
             if (pressedKeys.down && center.y > -1) center.y -= speed.y * delta;
-
-            v.set([center.x, center.y, 0]);
+            if (pressedKeys.turnRight) angle += rotationSpeed * delta;
+            if (pressedKeys.turnLeft) angle -= rotationSpeed * delta;
         }
 
         if (keypress || needsResize) {
-            m4.identity.translate(v).scale(s);
+            m4.identity
+                .translate(center.x, center.y, 0)
+                .scale((canvasElement.height * size) / canvasElement.width, size, 1)
+                .rotate(0, 0, 1, angle);
+
             cameraData.data.set(m4.data);
         }
 
