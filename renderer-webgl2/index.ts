@@ -33,15 +33,19 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         in vec3 a_position;
         in vec2 a_texCoord;
 
+        uniform float u_scaling;
+        uniform vec2 u_texSize;
         uniform vec2 u_resolution;
         uniform mat4 u_camera;
 
         out vec2 v_texCoord;
 
         void main() {
-            float ratio = u_resolution.x / u_resolution.y;
+            vec4 position = u_camera *  vec4(a_position, 1);
 
-            gl_Position = u_camera * vec4( a_position.xyz, 1);
+            float ratio = u_resolution.y / u_resolution.x;
+
+            gl_Position =vec4( position.xy * u_scaling * u_texSize / u_resolution.xy ,  position.z, 1);
             v_texCoord = a_texCoord;
         }`
     );
@@ -132,7 +136,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     // |  |
     // 2--1
     const verticesPositionData = new Float32Array([
-        //   clip space
         //   x,  y,  z,
              1,  1,  0, // 0
              1, -1,  0, // 1
@@ -218,6 +221,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     gl.uniform1fv(resolutionUniformLocation, resolutionData);
 
+    // uniforms - scaling
+
+    const scalingUniformLocation = gl.getUniformLocation(program, 'u_scaling');
+
+    const scalingData = 4;
+
+    gl.uniform1f(scalingUniformLocation, scalingData);
+
     // uniforms - camera transformation matrix
 
     const cameraUniformLocation = gl.getUniformLocation(program, 'u_camera');
@@ -253,6 +264,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
 
     gl.uniform1i(imageLocation, 0);
+
+    // uniforms - texture size
+
+    const textureSizeUniformLocation = gl.getUniformLocation(program, 'u_texSize');
+
+    const textureSizeData = new Float32Array([source.height, source.height]);
+
+    gl.uniform2fv(textureSizeUniformLocation, textureSizeData);
 
     /**
      *
@@ -376,8 +395,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // sprite initial state
     const center = { x: 0, y: 0 };
-    const speed = { x: 0.002, y: 0.002 };
-    const size = 0.2;
+    const speed = { x: 0.02, y: 0.02 };
 
     let angle = 0;
     const rotationSpeed = 0.01;
@@ -402,19 +420,16 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             pressedKeys.turnRight;
 
         if (keypress) {
-            if (pressedKeys.right && center.x < 1) center.x += speed.x * delta;
-            if (pressedKeys.left && center.x > -1) center.x -= speed.x * delta;
-            if (pressedKeys.up && center.y < 1) center.y += speed.y * delta;
-            if (pressedKeys.down && center.y > -1) center.y -= speed.y * delta;
+            if (pressedKeys.right) center.x += speed.x * delta;
+            if (pressedKeys.left) center.x -= speed.x * delta;
+            if (pressedKeys.up) center.y += speed.y * delta;
+            if (pressedKeys.down) center.y -= speed.y * delta;
             if (pressedKeys.turnRight) angle += rotationSpeed * delta;
             if (pressedKeys.turnLeft) angle -= rotationSpeed * delta;
         }
 
         if (keypress || needsResize) {
-            m4.identity
-                .translate(center.x, center.y, 0)
-                .scale((canvasElement.height * size) / canvasElement.width, size, 1)
-                .rotate(0, 0, 1, angle);
+            m4.identity.translate(center.x, center.y, 0).rotate(0, 0, 1, angle);
 
             cameraData.data.set(m4.data);
         }
