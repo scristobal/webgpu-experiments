@@ -30,8 +30,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         #pragma vscode_glsllint_stage: vert
 
 
-        in vec3 a_position;
-        in vec2 a_texCoord;
+        layout (location = 0) in vec3 a_position;
+        layout (location = 1) in vec2 a_texCoord;
 
         uniform float u_scaling;
         uniform vec2 u_texSize;
@@ -101,6 +101,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     if (!program) throw new Error('Failed to create program');
 
+    const verticesAttributeLocation = 0;
+    gl.bindAttribLocation(program, verticesAttributeLocation, 'a_position');
+
+    const verticesTextureLocation = 1;
+    gl.bindAttribLocation(program, verticesTextureLocation, 'a_texCoord');
+
     gl.attachShader(program, vertexShader);
     gl.attachShader(program, fragmentShader);
 
@@ -143,8 +149,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             -1,  1,  0, // 3
     ]);
 
-    const verticesAttributeLocation = gl.getAttribLocation(program, 'a_position');
-
     const verticesPositionBuffer = gl.createBuffer();
 
     gl.bindBuffer(gl.ARRAY_BUFFER, verticesPositionBuffer);
@@ -169,8 +173,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         0, 1,  // 2
         0, 0   // 3
     ]);
-
-    const verticesTextureLocation = gl.getAttribLocation(program, 'a_texCoord');
 
     const verticesTextureBuffer = gl.createBuffer();
 
@@ -219,7 +221,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const resolutionData = new Float32Array([canvasElement.width, canvasElement.height]);
 
-    gl.uniform1fv(resolutionUniformLocation, resolutionData);
+    gl.uniform2fv(resolutionUniformLocation, resolutionData);
 
     // uniforms - scaling
 
@@ -348,7 +350,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
      *
      */
 
-    const canvasDisplaySize = new WeakMap<Element, { width: number; height: number }>();
+    const maxTextureDimension = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+
+    const canvasDisplaySize = { width: 0, height: 0 };
 
     const observer = new ResizeObserver((entries) => {
         for (const entry of entries) {
@@ -356,34 +360,24 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
             if (!contentBoxSize) continue;
 
-            canvasDisplaySize.set(entry.target, {
-                width: contentBoxSize.inlineSize,
-                height: contentBoxSize.blockSize
-            });
+            canvasDisplaySize.width = Math.max(1, Math.min(contentBoxSize.inlineSize, maxTextureDimension));
+            canvasDisplaySize.height = Math.max(1, Math.min(contentBoxSize.blockSize, maxTextureDimension));
         }
     });
 
     observer.observe(canvasElement);
 
-    const maxTextureDimension = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    const resizeCanvasToDisplaySize = () => {
+        const needResize =
+            canvasElement.width !== canvasDisplaySize.width || canvasElement.height !== canvasDisplaySize.height;
 
-    const resizeCanvasToDisplaySize = ((maxTextureDimension: number) => {
-        return (canvas: HTMLCanvasElement) => {
-            let { width: displayWidth, height: displayHeight } = canvasDisplaySize.get(canvas) || canvas;
+        if (needResize) {
+            canvasElement.width = canvasDisplaySize.width;
+            canvasElement.height = canvasDisplaySize.height;
+        }
 
-            displayWidth = Math.max(1, Math.min(displayWidth, maxTextureDimension));
-            displayHeight = Math.max(1, Math.min(displayHeight, maxTextureDimension));
-
-            const needResize = canvas.width !== displayWidth || canvas.height !== displayHeight;
-
-            if (needResize) {
-                canvas.width = displayWidth;
-                canvas.height = displayHeight;
-            }
-
-            return needResize;
-        };
-    })(maxTextureDimension);
+        return needResize;
+    };
 
     /**
      *
@@ -405,7 +399,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     function update(now: number) {
         const delta = now - lastUpdate;
 
-        needsResize = resizeCanvasToDisplaySize(canvasElement);
+        needsResize = resizeCanvasToDisplaySize();
 
         if (needsResize) {
             resolutionData.set([canvasElement.width, canvasElement.height]);
