@@ -168,10 +168,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const verticesTextureData = new Float32Array([
         // texture
         //  u, v
-        1, 0,  // 0
-        1, 1,  // 1
-        0, 1,  // 2
-        0, 0   // 3
+            1, 0,  // 0
+            1, 1,  // 1
+            0, 1,  // 2
+            0, 0   // 3
     ]);
 
     const verticesTextureBuffer = gl.createBuffer();
@@ -241,29 +241,60 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // uniforms - texture
 
-    const imageLocation = gl.getUniformLocation(program, 'u_image');
-
-    const texture = gl.createTexture();
-
-    gl.activeTexture(gl.TEXTURE0 + 0);
-
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
     async function loadImageBitmap(url: string) {
         const res = await fetch(url);
         const blob = await res.blob();
         return await createImageBitmap(blob, { colorSpaceConversion: 'none' });
     }
 
-    const source = await loadImageBitmap('/avatar-1x.png');
+    async function loadMultiImageBitmap(url: string, n: number) {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const bitmap = await createImageBitmap(blob, { colorSpaceConversion: 'none' });
 
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        canvas.getContext('2d')?.drawImage(bitmap, 0, 0);
+
+        const fullImageData = canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height)!;
+
+        const spriteSize = Math.min(canvas.width, canvas.height);
+
+        const imageBitmaps: ImageBitmap[] = new Array(n);
+
+        const offset = 0;
+        const stride = spriteSize * spriteSize * 4;
+
+        for (let i = 0; i < n; i++) {
+            const data = fullImageData.data.slice(offset + i * stride, offset + (i + 1) * stride);
+
+            const imageData = new ImageData(data, spriteSize, spriteSize);
+
+            imageBitmaps[i] = await createImageBitmap(imageData);
+        }
+        return imageBitmaps;
+    }
+
+    const source = await loadMultiImageBitmap('/sprite-sheet.png', 7);
+
+    const imageLocation = gl.getUniformLocation(program, 'u_image');
+
+    for (let i = 0; i < 7; i++) {
+        const texture = gl.createTexture();
+
+        gl.activeTexture(gl.TEXTURE0 + i);
+
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source[i]);
+    }
 
     gl.uniform1i(imageLocation, 0);
 
@@ -271,7 +302,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const textureSizeUniformLocation = gl.getUniformLocation(program, 'u_texSize');
 
-    const textureSizeData = new Float32Array([source.height, source.height]);
+    const textureSizeData = new Float32Array([34, 34]); // new Float32Array([source.height, source.height]);
 
     gl.uniform2fv(textureSizeUniformLocation, textureSizeData);
 
@@ -394,6 +425,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     let angle = 0;
     const rotationSpeed = 0.01;
 
+    let animationTime = 0;
+    let animationFrame = 0;
+
     let lastUpdate = performance.now();
 
     function update(now: number) {
@@ -428,6 +462,13 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             cameraData.data.set(m4.data);
         }
 
+        animationTime += delta;
+
+        if (animationTime > 1_000) {
+            animationTime = 0;
+            animationFrame = (animationFrame + 1) % 7;
+        }
+
         lastUpdate = now;
     }
 
@@ -448,6 +489,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         gl.uniformMatrix4fv(cameraUniformLocation, false, cameraData.data);
+        gl.uniform1i(imageLocation, animationFrame);
 
         gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
     }
