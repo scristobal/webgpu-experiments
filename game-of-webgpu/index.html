@@ -48,17 +48,10 @@
     <body>
         <canvas class="pixelated-workaround"> </canvas>
 
-        <div
-            x-on:initerror.document="errorMessage = $event.detail"
-            class="error-container"
-            x-data="{ errorMessage: undefined }"
-            x-show="errorMessage !== undefined">
+        <div x-on:initerror.document="errorMessage = $event.detail" class="error-container" x-data="{ errorMessage: undefined }" x-show="errorMessage !== undefined">
             <h1 x-text="errorMessage"></h1>
             <p x-text="navigator.userAgent"></p>
-            <small
-                >WebGPU is still experimental.
-                <a href="https://caniuse.com/webgpu">Check compatible browsers </a></small
-            >
+            <small>WebGPU is still experimental. <a href="https://caniuse.com/webgpu">Check compatible browsers </a></small>
             <hr />
             <p><a href="/">&leftarrow; Back to the main page</a></p>
         </div>
