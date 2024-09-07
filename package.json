@@ -18,10 +18,15 @@
     "name": "webgpu",
     "scripts": {
         "build": "vite build",
-        "check": "tsc",
+        "check": "run-s check:*",
+        "check:format": "prettier . --check",
+        "check:lint": "eslint",
+        "check:types": "tsc",
         "dev": "vite --open",
-        "format": "prettier --write .",
-        "lint": "eslint",
+        "fix": "run-p fix:*",
+        "fix:format": "prettier . --write",
+        "fix:lint": "eslint --fix",
+        "fix:types": "ts-fix",
         "preview": "vite preview --open",
         "update": "npx npm-check-updates -i"
     },

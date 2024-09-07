@@ -399,8 +399,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     observer.observe(canvasElement);
 
     const resizeCanvasToDisplaySize = () => {
-        const needResize =
-            canvasElement.width !== canvasDisplaySize.width || canvasElement.height !== canvasDisplaySize.height;
+        const needResize = canvasElement.width !== canvasDisplaySize.width || canvasElement.height !== canvasDisplaySize.height;
 
         if (needResize) {
             canvasElement.width = canvasDisplaySize.width;
@@ -439,13 +438,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             resolutionData.set([canvasElement.width, canvasElement.height]);
         }
 
-        const keypress =
-            pressedKeys.right ||
-            pressedKeys.left ||
-            pressedKeys.up ||
-            pressedKeys.down ||
-            pressedKeys.turnLeft ||
-            pressedKeys.turnRight;
+        const keypress = pressedKeys.right || pressedKeys.left || pressedKeys.up || pressedKeys.down || pressedKeys.turnLeft || pressedKeys.turnRight;
 
         if (keypress) {
             if (pressedKeys.right) center.x += speed.x * delta;
@@ -472,6 +465,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         lastUpdate = now;
     }
 
+    const fb = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+
+    const fbTexture = gl.createTexture();
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvasElement.width, canvasElement.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbTexture, 0);
+
     /**
      *
      * Render loop
@@ -479,6 +480,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
      */
     function render() {
         if (!gl) throw new Error('Canvas context lost');
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
         if (needsResize) {
             gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
