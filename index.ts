@@ -276,11 +276,13 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         return imageBitmaps;
     }
 
-    const source = await loadMultiImageBitmap('/sprite-sheet.png', 7);
+    const spritesInSheet = 7;
+
+    const source = await loadMultiImageBitmap('/sprite-sheet.png', spritesInSheet);
 
     const imageLocation = gl.getUniformLocation(program, 'u_image');
 
-    for (let i = 0; i <= 7; i++) {
+    for (let i = 0; i < spritesInSheet; i++) {
         const texture = gl.createTexture();
 
         gl.activeTexture(gl.TEXTURE0 + i);
@@ -292,6 +294,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+        console.log(i, source[i]);
 
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source[i]);
     }
@@ -459,19 +463,18 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         if (animationTime > 1_000) {
             animationTime = 0;
-            animationFrame = (animationFrame + 1) % 7;
+            animationFrame = (animationFrame + 1) % spritesInSheet;
+            console.log(animationFrame);
         }
 
         lastUpdate = now;
     }
 
-    const fb = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-
-    const fbTexture = gl.createTexture();
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvasElement.width, canvasElement.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbTexture, 0);
+    // const fb = gl.createFramebuffer();
+    // gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    // const fbTexture = gl.createTexture();
+    // gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbTexture, 0);
+    // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvasElement.width, canvasElement.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 
     /**
      *
