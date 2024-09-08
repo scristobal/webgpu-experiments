@@ -5,77 +5,38 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-        <title>Experiments</title>
+        <title>WebGPU 2.5D</title>
 
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.red.min.css" />
-
-        <!-- icon -->
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧪</text></svg>" />
-
-        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-        <script defer src="check-webgpu.ts" type="module"></script>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📺</text></svg>" />
 
         <style>
-            main {
-                min-height: -moz-fit-content;
-                min-height: fit-content;
+            html,
+            body {
+                margin: 0;
+                height: 100dvh;
+                background-color: black;
+                overflow: hidden;
+            }
+            canvas {
+                display: block;
+                width: 100%;
+                height: 100%;
+                /* https://bugs.chromium.org/p/chromium/issues/detail?id=993762 */
+                /* https://stackoverflow.com/questions/69867152/how-to-disable-filtering-on-canvas-with-webgpu-context */
+                animation: fix-image-rendering-bug 0.0001s;
+                image-rendering: pixelated;
             }
 
-            @media (min-height: 25rem) {
-                footer {
-                    position: fixed;
-                    bottom: 0;
-                    padding-bottom: 1rem;
+            @keyframes fix-image-rendering-bug {
+                to {
+                    opacity: 1;
                 }
             }
         </style>
+        <script defer src="index.ts" type="module"></script>
     </head>
 
     <body>
-        <div class="container">
-            <nav>
-                <ul>
-                    <li><strong>🦀</strong></li>
-                </ul>
-                <ul>
-                    <li><a href="https://samuel.cristobal.messy.page/">About</a></li>
-                    <li><a href="https://blog.messy.page/">Blog</a></li>
-                    <li><a href="https://github.com/scristobal">Github</a></li>
-                </ul>
-            </nav>
-            <main>
-                <hgroup>
-                    <h1>Samu's WebGPU adventures</h1>
-                    <p>Random collection of experiments using WebGPU, WebGL and some Web Assembly.</p>
-                </hgroup>
-                <div class="container" x-on:capable.document="capable = $event.detail" x-data="{ capable: undefined }">
-                    <p x-show="capable">
-                        <strong><small>Your device is supported!</small></strong>
-                    </p>
-                    <p x-show="!capable">
-                        <strong><small>Your device is not supported by WebPGU yet... :(</small></strong>
-                    </p>
-                </div>
-                <ul>
-                    <li><a href="/game-of-webgpu/index.html">Game of Life using WebGPU compute shaders</a></li>
-                    <li>
-                        <a href="/renderer-webgpu/index.html    ">Basic 2.5D renderer using WebGPU (work in progress)</a>
-                    </li>
-                    <li>
-                        <a href="/renderer-webgl2/index.html">The same basic 2.5D renderer using WebGL2 (work in progress)</a>
-                    </li>
-                </ul>
-            </main>
-            <footer>
-                <hr />
-                <small x-cloak>
-                    <span x-init x-text="navigator.userAgent"></span>
-                    <br />
-
-                    WebGPU is still experimental.
-                    <a href="https://caniuse.com/webgpu">Check compatible browsers and support</a></small
-                >
-            </footer>
-        </div>
+        <canvas width="0" height="0"></canvas>
     </body>
 </html>
