@@ -280,7 +280,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const imageLocation = gl.getUniformLocation(program, 'u_image');
 
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i <= 7; i++) {
         const texture = gl.createTexture();
 
         gl.activeTexture(gl.TEXTURE0 + i);
