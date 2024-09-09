@@ -266,14 +266,17 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const imgBuffer = gl.createBuffer();
     gl.bindBuffer(gl.PIXEL_UNPACK_BUFFER, imgBuffer);
 
-    const canvas = document.createElement('canvas');
-    canvas.width = source.width;
-    canvas.height = source.height;
-    canvas.getContext('2d')?.drawImage(source, 0, 0);
+    const canvas = new OffscreenCanvas(source.width, source.height);
 
-    const imgData = canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height)!;
+    const ctx = canvas.getContext('2d');
 
-    gl.bufferData(gl.PIXEL_UNPACK_BUFFER, imgData.data, gl.STATIC_READ);
+    ctx?.drawImage(source, 0, 0);
+
+    source.close();
+
+    const imgData = ctx?.getImageData(0, 0, canvas.width, canvas.height).data!;
+
+    gl.bufferData(gl.PIXEL_UNPACK_BUFFER, imgData, gl.STATIC_READ);
 
     const spritesInSheet = 7;
     const spriteSize = 34 * 34;
