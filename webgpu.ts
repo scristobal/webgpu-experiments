@@ -1,8 +1,8 @@
-export function identity() {
+function identity() {
     return scaling(new Float32Array([1, 1, 1]));
 }
 
-export function scaling(v: Float32Array) {
+function scaling(v: Float32Array) {
     // prettier-ignore
     return new Float32Array([
             v[0],    0,    0,   0, // <-- column 0
@@ -12,7 +12,7 @@ export function scaling(v: Float32Array) {
         ]);
 }
 
-export function translation(v: Float32Array) {
+function translation(v: Float32Array) {
     // prettier-ignore
     return new Float32Array([
                1,    0,    0,    0, // <-- column 0
@@ -22,7 +22,7 @@ export function translation(v: Float32Array) {
         ]);
 }
 
-export function multiply(lhs: Float32Array, rhs: Float32Array) {
+function multiply(lhs: Float32Array, rhs: Float32Array) {
     // prettier-ignore
     return new Float32Array([
             lhs[0] * rhs[0] + lhs[4] * rhs[1] + lhs[8] * rhs[2] + lhs[12] * rhs[3],
@@ -47,11 +47,11 @@ export function multiply(lhs: Float32Array, rhs: Float32Array) {
         ]);
 }
 
-export function scale(m: Float32Array, v: Float32Array) {
+function scale(m: Float32Array, v: Float32Array) {
     return multiply(m, scaling(v));
 }
 
-export function translate(m: Float32Array, v: Float32Array) {
+function translate(m: Float32Array, v: Float32Array) {
     return multiply(m, translation(v));
 }
 
@@ -459,14 +459,4 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     return mainLoop;
 }
 
-const version = import.meta.env.VITE_APP_VERSION;
-console.log(`Using version ${version}`);
-
-const canvasElement = document.querySelector('canvas') ?? document.createElement('canvas');
-
-if (!document.contains(canvasElement)) document.body.append(canvasElement);
-
-renderer(canvasElement)
-    .then(requestAnimationFrame)
-    .catch(console.error)
-    .finally(() => console.log('done', new Date()));
+export { renderer };
