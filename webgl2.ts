@@ -242,12 +242,29 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     // uniforms - texture
 
     async function loadImageBitmap(url: string) {
-        const res = await fetch(url);
-        const blob = await res.blob();
-        return await createImageBitmap(blob, { colorSpaceConversion: 'none' });
+        const response = await fetch(url);
+
+        const blob = await response.blob();
+
+        const bitmap = await createImageBitmap(blob, { colorSpaceConversion: 'none' });
+
+        const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+
+        const ctx = canvas.getContext('2d');
+
+        ctx?.drawImage(bitmap, 0, 0);
+
+        // bitmaps do not get GC'd
+        bitmap.close();
+
+        return ctx?.getImageData(0, 0, canvas.width, canvas.height)!;
     }
 
-    const source = await loadImageBitmap('/sprite-sheet.png');
+    const imgData = await loadImageBitmap('/sprite-sheet.png');
+
+    const imgBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.PIXEL_UNPACK_BUFFER, imgBuffer);
+    gl.bufferData(gl.PIXEL_UNPACK_BUFFER, imgData.data, gl.STATIC_READ);
 
     const imageLocation = gl.getUniformLocation(program, 'u_image');
 
@@ -263,25 +280,11 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-    const imgBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.PIXEL_UNPACK_BUFFER, imgBuffer);
-
-    const canvas = new OffscreenCanvas(source.width, source.height);
-
-    const ctx = canvas.getContext('2d');
-
-    ctx?.drawImage(source, 0, 0);
-
-    source.close();
-
-    const imgData = ctx?.getImageData(0, 0, canvas.width, canvas.height).data!;
-
-    gl.bufferData(gl.PIXEL_UNPACK_BUFFER, imgData, gl.STATIC_READ);
-
     const spritesInSheet = 7;
-    const spriteSize = 34 * 34;
+    const spriteHeight = imgData.height / spritesInSheet;
+    const spriteWidth = imgData.width;
 
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 34, 34, 0, gl.RGBA, gl.UNSIGNED_BYTE, 0);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, spriteWidth, spriteHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, 0);
 
     gl.uniform1i(imageLocation, 0);
 
@@ -480,7 +483,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         gl.uniformMatrix4fv(cameraUniformLocation, false, cameraData.data);
 
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 34, 34, 0, gl.RGBA, gl.UNSIGNED_BYTE, spriteSize * 4 * animationFrame);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, spriteWidth, spriteHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, spriteWidth * spriteHeight * 4 * animationFrame);
 
         gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
     }
