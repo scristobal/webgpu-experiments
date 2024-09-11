@@ -47,8 +47,6 @@ export async function loadImageBitmap(url: string) {
 
     const bitmap = await createImageBitmap(blob, { colorSpaceConversion: 'none' });
 
-    if (!gl) throw 'WebGl2 context lost';
-
     return getImageDataUsingOfflineCanvas(bitmap);
 
     // return getImageDataUsingWebgl(bitmap, gl)

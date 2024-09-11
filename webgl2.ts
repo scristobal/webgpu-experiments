@@ -70,11 +70,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         /* glsl */ `#version 300 es
 
         #pragma vscode_glsllint_stage: frag
+
         #ifndef GL_FRAGMENT_PRECISION_HIGH
-        precision mediump float;
-      #else
-        precision highp float;
-      #endif
+            precision mediump float;
+        #else
+            precision highp float;
+        #endif
 
         uniform sampler2D u_image;
 
