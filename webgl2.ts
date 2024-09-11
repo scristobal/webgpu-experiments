@@ -1,4 +1,5 @@
 import { m4 } from './mat4';
+import { loadImageBitmap } from './utils';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
     /**
@@ -69,8 +70,11 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         /* glsl */ `#version 300 es
 
         #pragma vscode_glsllint_stage: frag
-
+        #ifndef GL_FRAGMENT_PRECISION_HIGH
+        precision mediump float;
+      #else
         precision highp float;
+      #endif
 
         uniform sampler2D u_image;
 
@@ -241,26 +245,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // uniforms - texture
 
-    async function loadImageBitmap(url: string) {
-        const response = await fetch(url);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        const blob = await response.blob();
-
-        const bitmap = await createImageBitmap(blob, { colorSpaceConversion: 'none' });
-
-        const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-
-        const ctx = canvas.getContext('2d');
-
-        ctx?.drawImage(bitmap, 0, 0);
-
-        // bitmaps do not get GC'd
-        bitmap.close();
-
-        return ctx?.getImageData(0, 0, canvas.width, canvas.height)!;
-    }
-
-    const imgData = await loadImageBitmap('/sprite-sheet.png');
+    const imgData = await loadImageBitmap('/sprite-sheet.png'); // TODO: parametrize
 
     const imgBuffer = gl.createBuffer();
     gl.bindBuffer(gl.PIXEL_UNPACK_BUFFER, imgBuffer);
@@ -270,7 +257,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const texture = gl.createTexture();
 
-    gl.activeTexture(gl.TEXTURE0);
+    gl.activeTexture(gl.TEXTURE0); // TODO: autoincrement
 
     gl.bindTexture(gl.TEXTURE_2D, texture);
 
@@ -280,7 +267,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-    const spritesInSheet = 7;
+    const spritesInSheet = 7; // TODO: parametrize
     const spriteHeight = imgData.height / spritesInSheet;
     const spriteWidth = imgData.width;
 
@@ -292,7 +279,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const textureSizeUniformLocation = gl.getUniformLocation(program, 'u_texSize');
 
-    const textureSizeData = new Float32Array([34, 34]); // new Float32Array([source.height, source.height]);
+    const textureSizeData = new Float32Array([spriteHeight, spriteWidth]);
 
     gl.uniform2fv(textureSizeUniformLocation, textureSizeData);
 
@@ -407,9 +394,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     let needsResize = true;
 
-    // sprite initial state
-    const center = { x: 0, y: 0 };
-    const speed = { x: 0.02, y: 0.02 };
+    // sprite initial state TODO: parametrize
+    const center = { x: 0, y: 0, z: 0 };
+    const speed = { x: 0.02, y: 0.02, z: 0 };
 
     let angle = 0;
     const rotationSpeed = 0.01;
@@ -440,7 +427,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         }
 
         if (keypress || needsResize) {
-            m4.identity.translate(center.x, center.y, 0).rotate(0, 0, 1, angle);
+            m4.identity.translate(center.x, center.y, center.z).rotate(0, 0, 1, angle);
 
             cameraData.data.set(m4.data);
         }
