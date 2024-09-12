@@ -37,12 +37,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         uniform float u_scaling;
         uniform vec2 u_texSize;
         uniform vec2 u_resolution;
-        uniform mat4 u_camera;
+
+        uniform mat4 u_positionTransform;
+        uniform mat4 u_texTransform;
 
         out vec2 v_texCoord;
 
         void main() {
-            vec4 position = u_camera *  vec4(a_position, 1);
+            vec4 position = u_positionTransform *  vec4(a_position, 1);
 
             float ratio = u_resolution.y / u_resolution.x;
 
@@ -236,13 +238,13 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     gl.uniform1f(scalingUniformLocation, scalingData);
 
-    // uniforms - camera transformation matrix
+    // uniforms - xyz vertex position transform
 
-    const cameraUniformLocation = gl.getUniformLocation(program, 'u_camera');
+    const positionTransformUniformLocation = gl.getUniformLocation(program, 'u_positionTransform');
 
-    const cameraData = m4.identity;
+    const positionTransformData = m4().identity;
 
-    gl.uniformMatrix4fv(cameraUniformLocation, false, cameraData.data);
+    gl.uniformMatrix4fv(positionTransformUniformLocation, false, positionTransformData.data);
 
     // uniforms - texture
 
@@ -258,7 +260,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const texture = gl.createTexture();
 
-    gl.activeTexture(gl.TEXTURE0); // TODO: autoincrement
+    gl.activeTexture(gl.TEXTURE0);
 
     gl.bindTexture(gl.TEXTURE_2D, texture);
 
@@ -283,6 +285,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const textureSizeData = new Float32Array([spriteHeight, spriteWidth]);
 
     gl.uniform2fv(textureSizeUniformLocation, textureSizeData);
+
+    // uniform - uv texture transform
 
     /**
      *
@@ -428,9 +432,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         }
 
         if (keypress || needsResize) {
-            m4.identity.translate(center.x, center.y, center.z).rotate(0, 0, 1, angle);
 
-            cameraData.data.set(m4.data);
+            positionTransformData.identity.translate(center.x, center.y, center.z).rotate(0, 0, 1, angle);
+
         }
 
         animationTime += delta;
@@ -469,7 +473,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        gl.uniformMatrix4fv(cameraUniformLocation, false, cameraData.data);
+        gl.uniformMatrix4fv(positionTransformUniformLocation, false, positionTransformData.data);
 
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, spriteWidth, spriteHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, spriteWidth * spriteHeight * 4 * animationFrame);
 
