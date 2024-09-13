@@ -39,17 +39,15 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         uniform vec2 u_resolution;
 
         uniform mat4 u_positionTransform;
-        uniform mat4 u_texTransform;
+        uniform mat3 u_texTransform;
 
-        out vec2 v_texCoord;
+        out vec3 v_texCoord;
 
         void main() {
             vec4 position = u_positionTransform *  vec4(a_position, 1);
 
-            float ratio = u_resolution.y / u_resolution.x;
-
-            gl_Position =vec4( position.xy * u_scaling * u_texSize / u_resolution.xy ,  position.z, 1);
-            v_texCoord = a_texCoord;
+            gl_Position = vec4( (position.xy * u_scaling * u_texSize) / u_resolution.xy ,  position.z, 1);
+            v_texCoord =  u_texTransform * vec3(a_texCoord.xy, 1) ;
         }`
     );
 
@@ -79,14 +77,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             precision highp float;
         #endif
 
-        uniform sampler2D u_image;
+        uniform sampler2D u_texture;
 
-        in vec2 v_texCoord;
+        in vec3 v_texCoord;
 
         out vec4 outColor;
 
         void main() {
-            outColor = texture(u_image, v_texCoord);
+            outColor = texture(u_texture, v_texCoord.xy);
         }`
     );
 
@@ -251,12 +249,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     const imgData = await loadImageBitmap('/sprite-sheet.png'); // TODO: parametrize
+    const numberSprites = 7;
 
-    const imgBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.PIXEL_UNPACK_BUFFER, imgBuffer);
-    gl.bufferData(gl.PIXEL_UNPACK_BUFFER, imgData.data, gl.STATIC_READ);
-
-    const imageLocation = gl.getUniformLocation(program, 'u_image');
+    const imageLocation = gl.getUniformLocation(program, 'u_texture');
 
     const texture = gl.createTexture();
 
@@ -270,11 +265,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-    const spritesInSheet = 7; // TODO: parametrize
-    const spriteHeight = imgData.height / spritesInSheet;
-    const spriteWidth = imgData.width;
-
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, spriteWidth, spriteHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, 0);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, imgData.width, imgData.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, imgData);
 
     gl.uniform1i(imageLocation, 0);
 
@@ -282,11 +273,22 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const textureSizeUniformLocation = gl.getUniformLocation(program, 'u_texSize');
 
-    const textureSizeData = new Float32Array([spriteHeight, spriteWidth]);
+    const textureSizeData = new Float32Array([imgData.width, imgData.height / numberSprites]);
 
     gl.uniform2fv(textureSizeUniformLocation, textureSizeData);
 
     // uniform - uv texture transform
+
+    const texTransformUniformLocation = gl.getUniformLocation(program, 'u_texTransform');
+
+    // prettier-ignore
+    let texTransformData = new Float32Array([
+        1, 0, 0,
+        0, 1/numberSprites, 0,
+        0/numberSprites, 0/numberSprites, 1
+    ])
+
+    gl.uniformMatrix3fv(texTransformUniformLocation, false, texTransformData);
 
     /**
      *
@@ -406,8 +408,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     let angle = 0;
     const rotationSpeed = 0.01;
 
-    let animationTime = 0;
-    let animationFrame = 0;
+    let currentSpriteTime = 0;
+    let currentSprite = 0;
 
     let lastUpdate = performance.now();
 
@@ -432,16 +434,20 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         }
 
         if (keypress || needsResize) {
-
             positionTransformData.identity.translate(center.x, center.y, center.z).rotate(0, 0, 1, angle);
-
         }
 
-        animationTime += delta;
+        currentSpriteTime += delta;
 
-        if (animationTime > 1_000) {
-            animationTime = 0;
-            animationFrame = (animationFrame + 1) % spritesInSheet;
+        if (currentSpriteTime > 1_000) {
+            currentSpriteTime = 0;
+            currentSprite = (currentSprite + 1) % numberSprites;
+
+            // prettier-ignore
+            texTransformData = new Float32Array([
+                1, 0, 0,
+                0, 1 / numberSprites, 0,
+                0, currentSprite / numberSprites, 1]);
         }
 
         lastUpdate = now;
@@ -473,9 +479,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        gl.uniformMatrix4fv(positionTransformUniformLocation, false, positionTransformData.data);
+        gl.uniformMatrix3fv(texTransformUniformLocation, false, texTransformData);
 
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, spriteWidth, spriteHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, spriteWidth * spriteHeight * 4 * animationFrame);
+        gl.uniformMatrix4fv(positionTransformUniformLocation, false, positionTransformData.data);
 
         gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
     }
@@ -486,7 +492,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
      *
      */
 
-    const frameTimes = new Float32Array(60);
+    const frameTimes = new Float32Array(1024);
     let frameTimesInd = 0;
 
     function main(now: number) {
@@ -494,13 +500,11 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         render();
         requestAnimationFrame(main);
 
-        frameTimes[frameTimesInd] = performance.now() - now;
-
-        frameTimesInd++;
+        frameTimes[++frameTimesInd] = performance.now() - now;
 
         if (frameTimesInd === frameTimes.length) {
             const average = frameTimes.reduce((acc, cur) => acc + cur, 0) / frameTimes.length;
-            console.log(`Last ${frameTimes.length.toFixed(0)} frame average was ${average.toFixed(3)}ms (equivalent to ${(1000 / average).toFixed(3)} frames per sencond)`);
+            console.log(`Last ${frameTimes.length.toFixed(0)} frames draw average time was ${average.toFixed(3)}ms (roughly equivalent to ${(1000 / average).toFixed(3)} frames per second)`);
             frameTimesInd = 0;
         }
     }

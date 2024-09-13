@@ -45,9 +45,11 @@ export async function loadImageBitmap(url: string) {
 
     const blob = await response.blob();
 
-    const bitmap = await createImageBitmap(blob, { colorSpaceConversion: 'none' });
+    return await createImageBitmap(blob, { colorSpaceConversion: 'none' });
+}
+
+export async function loadImageData(url: string) {
+    const bitmap = await loadImageBitmap(url);
 
     return getImageDataUsingOfflineCanvas(bitmap);
-
-    // return getImageDataUsingWebgl(bitmap, gl)
 }
