@@ -1,4 +1,4 @@
-const m4 = function () {
+function m4() {
     return {
         data: new Float32Array(16),
         op: new Float32Array(16),
@@ -78,6 +78,6 @@ const m4 = function () {
             return this.__multiply();
         }
     };
-};
+}
 
 export { m4 };

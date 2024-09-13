@@ -1,5 +1,5 @@
-import { m4 } from './mat4';
-import { loadImageBitmap } from './utils';
+import { m4 } from './matrix';
+import { loadSpriteSheet } from './sprites';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
     /**
@@ -248,10 +248,15 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-    const imgData = await loadImageBitmap('/sprite-sheet.png'); // TODO: parametrize
-    const numberSprites = 7;
-
-    const imageLocation = gl.getUniformLocation(program, 'u_texture');
+    const { imgData, sprites } = await loadSpriteSheet('/sprite-sheet.png', [
+        { location: [0, 0], size: [34, 34] },
+        { location: [0, 34], size: [34, 34] },
+        { location: [0, 68], size: [34, 34] },
+        { location: [0, 102], size: [34, 34] },
+        { location: [0, 136], size: [34, 34] },
+        { location: [0, 170], size: [34, 34] },
+        { location: [0, 204], size: [34, 34] }
+    ]); // TODO: parametrize
 
     const texture = gl.createTexture();
 
@@ -267,28 +272,17 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, imgData.width, imgData.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, imgData);
 
+    const imageLocation = gl.getUniformLocation(program, 'u_texture');
+
     gl.uniform1i(imageLocation, 0);
 
     // uniforms - texture size
 
-    const textureSizeUniformLocation = gl.getUniformLocation(program, 'u_texSize');
-
-    const textureSizeData = new Float32Array([imgData.width, imgData.height / numberSprites]);
-
-    gl.uniform2fv(textureSizeUniformLocation, textureSizeData);
+    const spriteSizeUniformLocation = gl.getUniformLocation(program, 'u_texSize');
 
     // uniform - uv texture transform
 
     const texTransformUniformLocation = gl.getUniformLocation(program, 'u_texTransform');
-
-    // prettier-ignore
-    let texTransformData = new Float32Array([
-        1, 0, 0,
-        0, 1/numberSprites, 0,
-        0/numberSprites, 0/numberSprites, 1
-    ])
-
-    gl.uniformMatrix3fv(texTransformUniformLocation, false, texTransformData);
 
     /**
      *
@@ -409,7 +403,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const rotationSpeed = 0.01;
 
     let currentSpriteTime = 0;
-    let currentSprite = 0;
 
     let lastUpdate = performance.now();
 
@@ -441,13 +434,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         if (currentSpriteTime > 1_000) {
             currentSpriteTime = 0;
-            currentSprite = (currentSprite + 1) % numberSprites;
-
-            // prettier-ignore
-            texTransformData = new Float32Array([
-                1, 0, 0,
-                0, 1 / numberSprites, 0,
-                0, currentSprite / numberSprites, 1]);
+            sprites.index = (sprites.index + 1) % sprites.length;
         }
 
         lastUpdate = now;
@@ -479,7 +466,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        gl.uniformMatrix3fv(texTransformUniformLocation, false, texTransformData);
+        gl.uniformMatrix3fv(texTransformUniformLocation, false, sprites.transform);
+
+        gl.uniform2fv(spriteSizeUniformLocation, sprites.size);
 
         gl.uniformMatrix4fv(positionTransformUniformLocation, false, positionTransformData.data);
 
