@@ -1,6 +1,8 @@
 import { inputHandler } from './input';
 import { m4 } from './matrix';
-import { loadSpriteSheet } from './sprites';
+import { resizeHandler } from './resize';
+import { spriteSheet } from './sprites';
+import { loadImageData } from './utils';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
     /**
@@ -226,10 +228,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution');
 
-    const resolutionData = new Float32Array([canvasElement.width, canvasElement.height]);
-
-    gl.uniform2fv(resolutionUniformLocation, resolutionData);
-
     // uniforms - scaling
 
     const scalingUniformLocation = gl.getUniformLocation(program, 'u_scaling');
@@ -242,23 +240,11 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const positionTransformUniformLocation = gl.getUniformLocation(program, 'u_modelTransform');
 
-    const positionTransformData = m4().identity;
-
-    gl.uniformMatrix4fv(positionTransformUniformLocation, false, positionTransformData.data);
-
     // uniforms - texture
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-    const { imgData, sprites } = await loadSpriteSheet('/sprite-sheet.png', [
-        { location: [0, 0], size: [34, 34] },
-        { location: [0, 34], size: [34, 34] },
-        { location: [0, 68], size: [34, 34] },
-        { location: [0, 102], size: [34, 34] },
-        { location: [0, 136], size: [34, 34] },
-        { location: [0, 170], size: [34, 34] },
-        { location: [0, 204], size: [34, 34] }
-    ]); // TODO: parametrize
+    const imgData = await loadImageData('/sprite-sheet.png');
 
     const texture = gl.createTexture();
 
@@ -286,39 +272,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const texTransformUniformLocation = gl.getUniformLocation(program, 'u_texTransform');
 
-    /**
-     *
-     * Resize canvas and contents correctly
-     *
-     */
+    // required to handle canvas resizing
 
-    const maxTextureDimension = gl.getParameter(gl.MAX_TEXTURE_SIZE);
-
-    const canvasDisplaySize = { width: 0, height: 0 };
-
-    const observer = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-            const contentBoxSize = entry.contentBoxSize[0];
-
-            if (!contentBoxSize) continue;
-
-            canvasDisplaySize.width = Math.max(1, Math.min(contentBoxSize.inlineSize, maxTextureDimension));
-            canvasDisplaySize.height = Math.max(1, Math.min(contentBoxSize.blockSize, maxTextureDimension));
-        }
-    });
-
-    observer.observe(canvasElement);
-
-    const resizeCanvasToDisplaySize = () => {
-        const needResize = canvasElement.width !== canvasDisplaySize.width || canvasElement.height !== canvasDisplaySize.height;
-
-        if (needResize) {
-            canvasElement.width = canvasDisplaySize.width;
-            canvasElement.height = canvasDisplaySize.height;
-        }
-
-        return needResize;
-    };
+    const maxTexDimension = gl.getParameter(gl.MAX_TEXTURE_SIZE);
 
     /**
      *
@@ -326,7 +282,29 @@ async function renderer(canvasElement: HTMLCanvasElement) {
      *
      */
 
-    let needsResize = true;
+    const resize = resizeHandler(maxTexDimension, canvasElement);
+
+    const sprites = spriteSheet({
+        imgSize: [imgData.width, imgData.height],
+        animations: [
+            {
+                name: 'idle',
+                frames: [
+                    { location: [0, 0], size: [34, 34] },
+                    { location: [0, 34], size: [34, 34] },
+                    { location: [0, 68], size: [34, 34] },
+                    { location: [0, 102], size: [34, 34] },
+                    { location: [0, 136], size: [34, 34] },
+                    { location: [0, 170], size: [34, 34] },
+                    { location: [0, 204], size: [34, 34] }
+                ]
+            }
+        ]
+    });
+
+    sprites.animation = 'idle';
+
+    const positionTransformData = m4().identity;
 
     // sprite initial state TODO: parametrize
     const center = { x: 0, y: 0, z: 0 };
@@ -342,12 +320,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     function update(now: number) {
         const delta = now - lastUpdate;
 
-        needsResize = resizeCanvasToDisplaySize();
-
-        if (needsResize) {
-            resolutionData.set([canvasElement.width, canvasElement.height]);
-        }
-
         if (inputHandler.keypress) {
             if (pressedKeys.right) center.x += speed.x * delta;
             if (pressedKeys.left) center.x -= speed.x * delta;
@@ -360,8 +332,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         }
 
         sprites.update(delta);
-
-        lastUpdate = now;
     }
 
     // const fb = gl.createFramebuffer();
@@ -382,9 +352,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        if (needsResize) {
+        if (resize.needsResize) {
             gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-            gl.uniform2fv(resolutionUniformLocation, resolutionData);
+            gl.uniform2fv(resolutionUniformLocation, resize.resolution);
         }
 
         gl.clearColor(0, 0, 0, 0);
@@ -420,6 +390,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             console.log(`Last ${frameTimes.length.toFixed(0)} frames draw average time was ${average.toFixed(3)}ms (roughly equivalent to ${(1000 / average).toFixed(3)} frames per second)`);
             frameTimesInd = 0;
         }
+
+        lastUpdate = performance.now();
     }
 
     return main;

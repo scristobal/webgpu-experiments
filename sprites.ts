@@ -1,17 +1,21 @@
-import { loadImageBitmap } from './utils';
-
-type SpriteAtlas = Array<{
+type AnimationFrames = Array<{
     location: [number, number];
     size: [number, number];
 }>;
 
-function spritesAtlas(atlas: SpriteAtlas, imgSize: [number, number]) {
+type Atlas = {
+    imgSize: [number, number];
+    animations: Array<{ name: string; frames: AnimationFrames }>;
+};
+
+function spriteSheet(atlas: Atlas) {
     return {
         _atlas: atlas,
-        _index: -1,
-        _imgSize: imgSize,
+        _index: 0,
+        _imgSize: atlas.imgSize,
         transform: new Float32Array(9),
         _currentSpriteTime: 0,
+        _currentAnimation: { name: '', frames: [] } as Atlas['animations'][0],
 
         get new() {
             this._next();
@@ -19,7 +23,7 @@ function spritesAtlas(atlas: SpriteAtlas, imgSize: [number, number]) {
         },
 
         _next() {
-            this._index = (this._index + 1) % this._atlas.length;
+            this._index = (this._index + 1) % this._currentAnimation.frames.length;
 
             // prettier-ignore
             this.transform.set([
@@ -29,6 +33,12 @@ function spritesAtlas(atlas: SpriteAtlas, imgSize: [number, number]) {
             ]);
         },
 
+        set animation(name: string) {
+            this._currentAnimation = this._atlas.animations.find((animation) => animation.name === name) ?? this._currentAnimation;
+        },
+
+
+
         update(dt: number) {
             this._currentSpriteTime += dt;
             if (this._currentSpriteTime > 1_000) {
@@ -36,22 +46,15 @@ function spritesAtlas(atlas: SpriteAtlas, imgSize: [number, number]) {
                 this._next();
             }
         },
+
         get size() {
-            return this._atlas[this._index].size;
+            return this._info.size;
         },
 
         get _info() {
-            return this._atlas[this._index];
+            return this._currentAnimation.frames[this._index];
         }
     };
 }
 
-async function loadSpriteSheet(url: string, atlas: SpriteAtlas) {
-    const imgData = await loadImageBitmap(url);
-
-    const sprites = spritesAtlas(atlas, [imgData.width, imgData.height]).new;
-
-    return { imgData, sprites };
-}
-
-export { loadSpriteSheet };
+export { spriteSheet };
