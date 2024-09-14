@@ -402,8 +402,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     let angle = 0;
     const rotationSpeed = 0.01;
 
-    let currentSpriteTime = 0;
-
     let lastUpdate = performance.now();
 
     function update(now: number) {
@@ -430,12 +428,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             positionTransformData.identity.translate(center.x, center.y, center.z).rotate(0, 0, 1, angle);
         }
 
-        currentSpriteTime += delta;
-
-        if (currentSpriteTime > 1_000) {
-            currentSpriteTime = 0;
-            sprites.index = (sprites.index + 1) % sprites.length;
-        }
+        sprites.update(delta);
 
         lastUpdate = now;
     }
