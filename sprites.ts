@@ -29,8 +29,8 @@ function spritesAtlas(atlas: SpriteAtlas, imgSize: [number, number]) {
             ]);
         },
 
-        update(dt: number){
-            this._currentSpriteTime +=dt;
+        update(dt: number) {
+            this._currentSpriteTime += dt;
             if (this._currentSpriteTime > 1_000) {
                 this._currentSpriteTime = 0;
                 this._next();

@@ -1,3 +1,4 @@
+import { inputHandler } from './input';
 import { m4 } from './matrix';
 import { loadSpriteSheet } from './sprites';
 
@@ -31,22 +32,23 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         #pragma vscode_glsllint_stage: vert
 
 
-        layout (location = 0) in vec3 a_position;
+        layout (location = 0) in vec3 a_coords;
         layout (location = 1) in vec2 a_texCoord;
 
         uniform float u_scaling;
-        uniform vec2 u_texSize;
         uniform vec2 u_resolution;
 
-        uniform mat4 u_positionTransform;
+        uniform vec2 u_modelSize;
+
+        uniform mat4 u_modelTransform;
         uniform mat3 u_texTransform;
 
         out vec3 v_texCoord;
 
         void main() {
-            vec4 position = u_positionTransform *  vec4(a_position, 1);
+            vec4 position = u_modelTransform *  vec4(a_coords, 1);
 
-            gl_Position = vec4( (position.xy * u_scaling * u_texSize) / u_resolution.xy ,  position.z, 1);
+            gl_Position = vec4( (position.xy * u_scaling * u_modelSize) / u_resolution.xy ,  position.z, 1);
             v_texCoord =  u_texTransform * vec3(a_texCoord.xy, 1) ;
         }`
     );
@@ -107,7 +109,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     if (!program) throw new Error('Failed to create program');
 
     const verticesAttributeLocation = 0;
-    gl.bindAttribLocation(program, verticesAttributeLocation, 'a_position');
+    gl.bindAttribLocation(program, verticesAttributeLocation, 'a_coords');
 
     const verticesTextureLocation = 1;
     gl.bindAttribLocation(program, verticesTextureLocation, 'a_texCoord');
@@ -238,7 +240,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // uniforms - xyz vertex position transform
 
-    const positionTransformUniformLocation = gl.getUniformLocation(program, 'u_positionTransform');
+    const positionTransformUniformLocation = gl.getUniformLocation(program, 'u_modelTransform');
 
     const positionTransformData = m4().identity;
 
@@ -278,80 +280,11 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // uniforms - texture size
 
-    const spriteSizeUniformLocation = gl.getUniformLocation(program, 'u_texSize');
+    const spriteSizeUniformLocation = gl.getUniformLocation(program, 'u_modelSize');
 
     // uniform - uv texture transform
 
     const texTransformUniformLocation = gl.getUniformLocation(program, 'u_texTransform');
-
-    /**
-     *
-     * Capture keyboard events
-     *
-     */
-
-    const pressedKeys = {
-        up: false,
-        down: false,
-        left: false,
-        right: false,
-        turnLeft: false,
-        turnRight: false
-    };
-
-    window.onkeydown = (e) => {
-        switch (e.key) {
-            case 'w':
-            case 'ArrowUp':
-                pressedKeys.up = true;
-                break;
-            case 'a':
-            case 'ArrowLeft':
-                pressedKeys.left = true;
-                break;
-            case 's':
-            case 'ArrowDown':
-                pressedKeys.down = true;
-                break;
-            case 'd':
-            case 'ArrowRight':
-                pressedKeys.right = true;
-                break;
-            case 'q':
-                pressedKeys.turnLeft = true;
-                break;
-            case 'e':
-                pressedKeys.turnRight = true;
-                break;
-        }
-    };
-
-    window.onkeyup = (e) => {
-        switch (e.key) {
-            case 'w':
-            case 'ArrowUp':
-                pressedKeys.up = false;
-                break;
-            case 'a':
-            case 'ArrowLeft':
-                pressedKeys.left = false;
-                break;
-            case 's':
-            case 'ArrowDown':
-                pressedKeys.down = false;
-                break;
-            case 'd':
-            case 'ArrowRight':
-                pressedKeys.right = false;
-                break;
-            case 'q':
-                pressedKeys.turnLeft = false;
-                break;
-            case 'e':
-                pressedKeys.turnRight = false;
-                break;
-        }
-    };
 
     /**
      *
@@ -404,6 +337,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     let lastUpdate = performance.now();
 
+    const pressedKeys = inputHandler;
+
     function update(now: number) {
         const delta = now - lastUpdate;
 
@@ -413,18 +348,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             resolutionData.set([canvasElement.width, canvasElement.height]);
         }
 
-        const keypress = pressedKeys.right || pressedKeys.left || pressedKeys.up || pressedKeys.down || pressedKeys.turnLeft || pressedKeys.turnRight;
-
-        if (keypress) {
+        if (inputHandler.keypress) {
             if (pressedKeys.right) center.x += speed.x * delta;
             if (pressedKeys.left) center.x -= speed.x * delta;
             if (pressedKeys.up) center.y += speed.y * delta;
             if (pressedKeys.down) center.y -= speed.y * delta;
             if (pressedKeys.turnRight) angle += rotationSpeed * delta;
             if (pressedKeys.turnLeft) angle -= rotationSpeed * delta;
-        }
 
-        if (keypress || needsResize) {
             positionTransformData.identity.translate(center.x, center.y, center.z).rotate(0, 0, 1, angle);
         }
 
