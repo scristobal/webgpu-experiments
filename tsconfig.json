@@ -30,6 +30,8 @@
         "strict": true,
         "target": "esnext",
         "types": ["@webgpu/types"],
+        "baseUrl": ".",
+        "paths": { "@src/*": ["src/*"] },
         "useDefineForClassFields": false
     },
     "exclude": ["node_modules", "lib"],

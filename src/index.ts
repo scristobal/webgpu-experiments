@@ -1,4 +1,4 @@
-import { renderer } from './webgl2';
+import { renderer } from '@src/backends/webgl2';
 
 const version = import.meta.env.VITE_APP_VERSION;
 console.log(`[${new Date()}] Using version ${version}`);

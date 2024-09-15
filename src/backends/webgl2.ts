@@ -1,10 +1,9 @@
-import { animation } from './animation';
-import { inputHandler } from './input';
-import { m4 } from './matrix';
-import { resizeHandler } from './resize';
-import { spriteSheet } from './sprites';
-import { loadImageData } from './utils';
-import animationDef from './animation.json';
+import { animation } from 'src/systems/animation';
+import { inputHandler } from 'src/systems/input';
+import { resizeHandler } from 'src/helpers/resize';
+import { spriteSheet } from 'src/systems/sprites';
+import { loadImageData } from 'src/helpers/image';
+import { movement } from 'src/systems/movement';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
     /**
@@ -286,7 +285,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const resize = resizeHandler(maxTexDimension, canvasElement);
 
-    const sprites = spriteSheet({
+    const spriteSystem = spriteSheet({
         imgSize: [imgData.width, imgData.height],
         sprites: {
             'look-right': { location: [0, 0], size: [34, 34] },
@@ -299,7 +298,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         }
     });
 
-    const idleAnimation = animation({
+    const animationSystem = animation({
         'idle-0': { duration: 500, sprite: 'look-right', next: 'idle-1' },
         'idle-1': { duration: 500, sprite: 'look-left', next: 'idle-2' },
         'idle-2': { duration: 500, sprite: 'open-mouth', next: 'idle-3' },
@@ -309,17 +308,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         'idle-6': { duration: 500, sprite: 'look-right', next: 'idle-0' }
     });
 
-    idleAnimation.current = 'idle-0';
-    sprites.sprite = idleAnimation.sprite;
+    animationSystem.current = 'idle-0';
+    spriteSystem.sprite = animationSystem.sprite;
 
-    const positionTransformData = m4().identity;
-
-    // sprite initial state TODO: parametrize
-    const center = { x: 0, y: 0, z: 0 };
-    const speed = { x: 0.02, y: 0.02, z: 0 };
-
-    let angle = 0;
-    const rotationSpeed = 0.01;
+    const movementSystem = movement();
 
     let lastUpdate = performance.now();
 
@@ -329,17 +321,15 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         const delta = now - lastUpdate;
 
         if (inputHandler.keypress) {
-            if (pressedKeys.right) center.x += speed.x * delta;
-            if (pressedKeys.left) center.x -= speed.x * delta;
-            if (pressedKeys.up) center.y += speed.y * delta;
-            if (pressedKeys.down) center.y -= speed.y * delta;
-            if (pressedKeys.turnRight) angle += rotationSpeed * delta;
-            if (pressedKeys.turnLeft) angle -= rotationSpeed * delta;
-
-            positionTransformData.identity.translate(center.x, center.y, center.z).rotate(0, 0, 1, angle);
+            if (pressedKeys.right) movementSystem.moveRight(delta);
+            if (pressedKeys.left) movementSystem.moveLeft(delta);
+            if (pressedKeys.up) movementSystem.moveUp(delta);
+            if (pressedKeys.down) movementSystem.moveDown(delta);
+            if (pressedKeys.turnRight) movementSystem.rotateClockWise(delta);
+            if (pressedKeys.turnLeft) movementSystem.rotateCounterClockWise(delta);
         }
 
-        sprites.sprite = idleAnimation.update(delta).sprite;
+        spriteSystem.sprite = animationSystem.update(delta).sprite;
     }
 
     // const fb = gl.createFramebuffer();
@@ -368,11 +358,11 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        gl.uniformMatrix3fv(texTransformUniformLocation, false, sprites.transform);
+        gl.uniformMatrix3fv(texTransformUniformLocation, false, spriteSystem.transform);
 
-        gl.uniform2fv(spriteSizeUniformLocation, sprites.size);
+        gl.uniform2fv(spriteSizeUniformLocation, spriteSystem.size);
 
-        gl.uniformMatrix4fv(positionTransformUniformLocation, false, positionTransformData.data);
+        gl.uniformMatrix4fv(positionTransformUniformLocation, false, movementSystem.transform);
 
         gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
     }
