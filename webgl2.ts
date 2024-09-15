@@ -1,8 +1,10 @@
+import { animation } from './animation';
 import { inputHandler } from './input';
 import { m4 } from './matrix';
 import { resizeHandler } from './resize';
 import { spriteSheet } from './sprites';
 import { loadImageData } from './utils';
+import animationDef from './animation.json';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
     /**
@@ -286,23 +288,29 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const sprites = spriteSheet({
         imgSize: [imgData.width, imgData.height],
-        animations: [
-            {
-                name: 'idle',
-                frames: [
-                    { location: [0, 0], size: [34, 34] },
-                    { location: [0, 34], size: [34, 34] },
-                    { location: [0, 68], size: [34, 34] },
-                    { location: [0, 102], size: [34, 34] },
-                    { location: [0, 136], size: [34, 34] },
-                    { location: [0, 170], size: [34, 34] },
-                    { location: [0, 204], size: [34, 34] }
-                ]
-            }
-        ]
+        sprites: {
+            'look-right': { location: [0, 0], size: [34, 34] },
+            'look-left': { location: [0, 34], size: [34, 34] },
+            'open-mouth': { location: [0, 68], size: [34, 34] },
+            'closed-eyes': { location: [0, 102], size: [34, 34] },
+            'shoulders-down': { location: [0, 136], size: [34, 34] },
+            'stretch-up': { location: [0, 170], size: [34, 34] },
+            'stretch-down': { location: [0, 204], size: [34, 34] }
+        }
     });
 
-    sprites.animation = 'idle';
+    const idleAnimation = animation({
+        'idle-0': { duration: 500, sprite: 'look-right', next: 'idle-1' },
+        'idle-1': { duration: 500, sprite: 'look-left', next: 'idle-2' },
+        'idle-2': { duration: 500, sprite: 'open-mouth', next: 'idle-3' },
+        'idle-3': { duration: 500, sprite: 'closed-eyes', next: 'idle-4' },
+        'idle-4': { duration: 500, sprite: 'stretch-up', next: 'idle-5' },
+        'idle-5': { duration: 500, sprite: 'stretch-down', next: 'idle-6' },
+        'idle-6': { duration: 500, sprite: 'look-right', next: 'idle-0' }
+    });
+
+    idleAnimation.current = 'idle-0';
+    sprites.sprite = idleAnimation.sprite;
 
     const positionTransformData = m4().identity;
 
@@ -331,7 +339,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             positionTransformData.identity.translate(center.x, center.y, center.z).rotate(0, 0, 1, angle);
         }
 
-        sprites.update(delta);
+        sprites.sprite = idleAnimation.update(delta).sprite;
     }
 
     // const fb = gl.createFramebuffer();

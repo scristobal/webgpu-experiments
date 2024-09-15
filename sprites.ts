@@ -1,58 +1,39 @@
-type AnimationFrames = Array<{
+type Sprites = {
     location: [number, number];
     size: [number, number];
-}>;
+};
 
 type Atlas = {
     imgSize: [number, number];
-    animations: Array<{ name: string; frames: AnimationFrames }>;
+    sprites: { [n: string]: Sprites };
 };
 
 function spriteSheet(atlas: Atlas) {
     return {
         _atlas: atlas,
-        _index: 0,
         _imgSize: atlas.imgSize,
         transform: new Float32Array(9),
-        _currentSpriteTime: 0,
-        _currentAnimation: { name: '', frames: [] } as Atlas['animations'][0],
+        _current: '',
 
-        get new() {
-            this._next();
-            return this;
-        },
+        set sprite(name: string) {
+            if (this._current === name) return;
 
-        _next() {
-            this._index = (this._index + 1) % this._currentAnimation.frames.length;
+            this._current = name;
 
             // prettier-ignore
             this.transform.set([
-                this._info.size[0] / this._imgSize[0], 0, 0,
-                0, this._info.size[1] / this._imgSize[1], 0,
-                this._info.location[0] / this._imgSize[0], this._info.location[1] / this._imgSize[1], 1
+                this._sprite.size[0] / this._imgSize[0], 0, 0,
+                0, this._sprite.size[1] / this._imgSize[1], 0,
+                this._sprite.location[0] / this._imgSize[0], this._sprite.location[1] / this._imgSize[1], 1
             ]);
         },
 
-        set animation(name: string) {
-            this._currentAnimation = this._atlas.animations.find((animation) => animation.name === name) ?? this._currentAnimation;
-        },
-
-
-
-        update(dt: number) {
-            this._currentSpriteTime += dt;
-            if (this._currentSpriteTime > 1_000) {
-                this._currentSpriteTime = 0;
-                this._next();
-            }
-        },
-
         get size() {
-            return this._info.size;
+            return this._sprite.size;
         },
 
-        get _info() {
-            return this._currentAnimation.frames[this._index];
+        get _sprite() {
+            return this._atlas.sprites[this._current];
         }
     };
 }
