@@ -132,38 +132,18 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     /**
      *
-     * Setup the vertex array object (vao)
+     * Vertex array object (vao)
      *
      */
 
     const verticesArrayObject = gl.createVertexArray();
     gl.bindVertexArray(verticesArrayObject);
 
-    /**
-     *
-     * Load vertices data into the program (shaders)
-     *
-     */
-
     // vertices data - position coordinates
-
-    // prettier-ignore
-    // 3--0
-    // |  |
-    // 2--1
-    const verticesPositionData = new Float32Array([
-        //   x,  y,  z,
-             1,  1,  0, // 0
-             1, -1,  0, // 1
-            -1, -1,  0, // 2
-            -1,  1,  0, // 3
-    ]);
 
     const verticesPositionBuffer = gl.createBuffer();
 
     gl.bindBuffer(gl.ARRAY_BUFFER, verticesPositionBuffer);
-
-    gl.bufferData(gl.ARRAY_BUFFER, verticesPositionData, gl.STATIC_DRAW);
 
     gl.enableVertexAttribArray(verticesAttributeLocation);
 
@@ -171,24 +151,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // vertices data - texture coordinates
 
-    // prettier-ignore
-    // 3--0
-    // |  |
-    // 2--1
-    const verticesTextureData = new Float32Array([
-        // texture
-        //  u, v
-            1, 0,  // 0
-            1, 1,  // 1
-            0, 1,  // 2
-            0, 0   // 3
-    ]);
-
     const verticesTextureBuffer = gl.createBuffer();
 
     gl.bindBuffer(gl.ARRAY_BUFFER, verticesTextureBuffer);
-
-    gl.bufferData(gl.ARRAY_BUFFER, verticesTextureData, gl.STATIC_DRAW);
 
     gl.enableVertexAttribArray(verticesTextureLocation);
 
@@ -200,19 +165,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 
-    // prettier-ignore
-    // 3 - - - 0
-    // |     / |
-    // |   /   |
-    // | /     |
-    // 2 - - - 1
-    const indicesData = new Uint16Array([
-        3, 2, 0,
-        2, 1, 0,
-    ]);
-
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicesData, gl.STATIC_DRAW);
-
     // enable culling of back facing (clock wise) triangles
     gl.enable(gl.CULL_FACE);
 
@@ -221,7 +173,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     /**
      *
-     * Load uniforms into the program
+     * Uniforms
      *
      */
 
@@ -233,10 +185,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const scalingUniformLocation = gl.getUniformLocation(program, 'u_scaling');
 
-    const scalingData = 4;
-
-    gl.uniform1f(scalingUniformLocation, scalingData);
-
     // uniforms - xyz vertex position transform
 
     const positionTransformUniformLocation = gl.getUniformLocation(program, 'u_modelTransform');
@@ -244,8 +192,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     // uniforms - texture
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-    const imgData = await loadImageData('/sprite-sheet.png');
 
     const texture = gl.createTexture();
 
@@ -259,11 +205,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, imgData.width, imgData.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, imgData);
-
     const imageLocation = gl.getUniformLocation(program, 'u_texture');
-
-    gl.uniform1i(imageLocation, 0);
 
     // uniforms - texture size
 
@@ -273,9 +215,62 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const texTransformUniformLocation = gl.getUniformLocation(program, 'u_texTransform');
 
-    // required to handle canvas resizing
+    async function load() {
+        if (!gl) throw 'WebGL2 context lost';
 
-    const maxTexDimension = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+        const scalingData = 4;
+
+        gl.uniform1f(scalingUniformLocation, scalingData);
+
+        gl.bindVertexArray(verticesArrayObject);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, verticesPositionBuffer);
+        // prettier-ignore
+        // 3--0
+        // |  |
+        // 2--1
+        const verticesPositionData = new Float32Array([
+        //   x,  y,  z,
+             1,  1,  0, // 0
+             1, -1,  0, // 1
+            -1, -1,  0, // 2
+            -1,  1,  0, // 3
+        ]);
+        gl.bufferData(gl.ARRAY_BUFFER, verticesPositionData, gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, verticesTextureBuffer);
+        // prettier-ignore
+        // 3--0
+        // |  |
+        // 2--1
+        const verticesTextureData = new Float32Array([
+        // texture
+        //  u, v
+            1, 0,  // 0
+            1, 1,  // 1
+            0, 1,  // 2
+            0, 0   // 3
+        ]);
+        gl.bufferData(gl.ARRAY_BUFFER, verticesTextureData, gl.STATIC_DRAW);
+
+        // prettier-ignore
+        // 3 - - - 0
+        // |     / |
+        // |   /   |
+        // | /     |
+        // 2 - - - 1
+        const indicesData = new Uint16Array([
+            3, 2, 0,
+            2, 1, 0,
+        ]);
+
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicesData, gl.STATIC_DRAW);
+
+        gl.activeTexture(gl.TEXTURE0);
+        const imgData = await loadImageData('/sprite-sheet.png');
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, imgData.width, imgData.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, imgData);
+        gl.uniform1i(imageLocation, 0);
+    }
 
     /**
      *
@@ -283,10 +278,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
      *
      */
 
-    const resize = resizeHandler(maxTexDimension, canvasElement);
+    const resize = resizeHandler(gl.getParameter(gl.MAX_TEXTURE_SIZE), canvasElement);
 
     const spriteSystem = spriteSheet({
-        imgSize: [imgData.width, imgData.height],
+        imgSize: [34, 34 * 7],
         sprites: {
             'look-right': { location: [0, 0], size: [34, 34] },
             'look-left': { location: [0, 34], size: [34, 34] },
@@ -375,6 +370,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const frameTimes = new Float32Array(1024);
     let frameTimesInd = 0;
+
+    await load();
 
     function main(now: number) {
         update(now);
