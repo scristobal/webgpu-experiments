@@ -14,7 +14,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const gl = canvasElement.getContext('webgl2');
 
-    if (!gl) throw new Error('WebGL2 not supported in this browser');
+
+    if (!gl) throw 'WebGL2 not supported in this browser';
 
     /**
      *
@@ -26,7 +27,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const vertexShader = gl.createShader(gl.VERTEX_SHADER);
 
-    if (!vertexShader) throw new Error('Failed to create shader');
+    if (!vertexShader) throw 'Failed to create shader';
 
     gl.shaderSource(
         vertexShader,
@@ -35,7 +36,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         #pragma vscode_glsllint_stage: vert
 
 
-        layout (location = 0) in vec3 a_coords;
+        layout (location = 0) in vec3 a_coord;
         layout (location = 1) in vec2 a_texCoord;
 
         uniform float u_scaling;
@@ -49,7 +50,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         out vec3 v_texCoord;
 
         void main() {
-            vec4 position = u_modelTransform *  vec4(a_coords, 1);
+            vec4 position = u_modelTransform *  vec4(a_coord, 1);
 
             gl_Position = vec4( (position.xy * u_scaling * u_modelSize) / u_resolution.xy ,  position.z, 1);
             v_texCoord =  u_texTransform * vec3(a_texCoord.xy, 1) ;
@@ -63,12 +64,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
         console.error(gl.getShaderInfoLog(vertexShader));
         gl.deleteShader(vertexShader);
-        throw new Error('Failed to compile vertex shader');
+        throw 'Failed to compile vertex shader';
     }
 
     const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
 
-    if (!fragmentShader) throw new Error('Failed to create fragment shader');
+    if (!fragmentShader) throw 'Failed to create fragment shader';
 
     gl.shaderSource(
         fragmentShader,
@@ -98,7 +99,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
         console.error(gl.getShaderInfoLog(fragmentShader));
         gl.deleteShader(fragmentShader);
-        throw new Error('Failed to compile fragment shader');
+        throw 'Failed to compile fragment shader';
     }
 
     /**
@@ -109,13 +110,13 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const program = gl.createProgram();
 
-    if (!program) throw new Error('Failed to create program');
+    if (!program) throw 'Failed to create program';
 
-    const verticesAttributeLocation = 0;
-    gl.bindAttribLocation(program, verticesAttributeLocation, 'a_coords');
+    // const verticesAttributeLocation = 0;
+    // gl.bindAttribLocation(program, verticesAttributeLocation, 'a_coords');
 
-    const verticesTextureLocation = 1;
-    gl.bindAttribLocation(program, verticesTextureLocation, 'a_texCoord');
+    // const verticesTextureLocation = 1;
+    // gl.bindAttribLocation(program, verticesTextureLocation, 'a_texCoord');
 
     gl.attachShader(program, vertexShader);
     gl.attachShader(program, fragmentShader);
@@ -125,7 +126,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
         console.error(gl.getProgramInfoLog(program));
         gl.deleteProgram(program);
-        throw new Error('Failed to link the program');
+        throw 'Failed to link the program';
     }
 
     gl.useProgram(program);
@@ -145,6 +146,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     gl.bindBuffer(gl.ARRAY_BUFFER, verticesPositionBuffer);
 
+    const verticesAttributeLocation = gl.getAttribLocation(program, 'a_coord');
+
     gl.enableVertexAttribArray(verticesAttributeLocation);
 
     gl.vertexAttribPointer(verticesAttributeLocation, 3, gl.FLOAT, false, 0, 0);
@@ -155,15 +158,17 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     gl.bindBuffer(gl.ARRAY_BUFFER, verticesTextureBuffer);
 
+    const verticesTextureLocation = gl.getAttribLocation(program, 'a_texCoord');
+
     gl.enableVertexAttribArray(verticesTextureLocation);
 
     gl.vertexAttribPointer(verticesTextureLocation, 2, gl.FLOAT, false, 0, 0);
 
     // vertices data indexing
 
-    const indexBuffer = gl.createBuffer();
+    const indicesBuffer = gl.createBuffer();
 
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
 
     // enable culling of back facing (clock wise) triangles
     gl.enable(gl.CULL_FACE);
@@ -215,21 +220,29 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const texTransformUniformLocation = gl.getUniformLocation(program, 'u_texTransform');
 
+    /**
+     *
+     * Load data
+     *
+     */
+
     async function load() {
         if (!gl) throw 'WebGL2 context lost';
 
+        // load canvas scale value
         const scalingData = 4;
-
         gl.uniform1f(scalingUniformLocation, scalingData);
 
+        // load model, vertices and texture coordinates and indexing
         gl.bindVertexArray(verticesArrayObject);
 
+        // vertices coordinates
         gl.bindBuffer(gl.ARRAY_BUFFER, verticesPositionBuffer);
         // prettier-ignore
+        const verticesPositionData = new Float32Array([
         // 3--0
         // |  |
         // 2--1
-        const verticesPositionData = new Float32Array([
         //   x,  y,  z,
              1,  1,  0, // 0
              1, -1,  0, // 1
@@ -238,13 +251,13 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         ]);
         gl.bufferData(gl.ARRAY_BUFFER, verticesPositionData, gl.STATIC_DRAW);
 
+        // texture coordinates
         gl.bindBuffer(gl.ARRAY_BUFFER, verticesTextureBuffer);
         // prettier-ignore
+        const verticesTextureData = new Float32Array([
         // 3--0
         // |  |
         // 2--1
-        const verticesTextureData = new Float32Array([
-        // texture
         //  u, v
             1, 0,  // 0
             1, 1,  // 1
@@ -253,19 +266,21 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         ]);
         gl.bufferData(gl.ARRAY_BUFFER, verticesTextureData, gl.STATIC_DRAW);
 
+        // vertex indices
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
         // prettier-ignore
+        const indicesData = new Uint16Array([
         // 3 - - - 0
         // |     / |
         // |   /   |
         // | /     |
         // 2 - - - 1
-        const indicesData = new Uint16Array([
             3, 2, 0,
             2, 1, 0,
         ]);
-
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicesData, gl.STATIC_DRAW);
 
+        // texture
         gl.activeTexture(gl.TEXTURE0);
         const imgData = await loadImageData('/sprite-sheet.png');
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, imgData.width, imgData.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, imgData);
@@ -281,7 +296,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const resize = resizeHandler(gl.getParameter(gl.MAX_TEXTURE_SIZE), canvasElement);
 
     const spriteSystem = spriteSheet({
-        imgSize: [34, 34 * 7],
+        get imgSize(): [number, number] {
+            return [34, 34 * Object.keys(this.sprites).length];
+        },
         sprites: {
             'look-right': { location: [0, 0], size: [34, 34] },
             'look-left': { location: [0, 34], size: [34, 34] },
@@ -341,7 +358,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
      *
      */
     function render() {
-        if (!gl) throw new Error('Canvas context lost');
+        if (!gl) throw 'Canvas context lost';
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
@@ -364,19 +381,17 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     /**
      *
-     * Main loop
+     * Game loop
      *
      */
 
     const frameTimes = new Float32Array(1024);
     let frameTimesInd = 0;
 
-    await load();
-
-    function main(now: number) {
+    function gameLoop(now: number) {
         update(now);
         render();
-        requestAnimationFrame(main);
+        requestAnimationFrame(gameLoop);
 
         frameTimes[++frameTimesInd] = performance.now() - now;
 
@@ -389,7 +404,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         lastUpdate = performance.now();
     }
 
-    return main;
+    return async function () {
+        await load();
+        gameLoop(performance.now());
+    };
 }
 
 export { renderer };
