@@ -14,7 +14,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const gl = canvasElement.getContext('webgl2');
 
-
     if (!gl) throw 'WebGL2 not supported in this browser';
 
     /**
@@ -196,11 +195,16 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // uniforms - texture
 
+    const textureIndex = gl.TEXTURE0;
+
+    const textureLocation = gl.getUniformLocation(program, 'u_texture');
+    gl.uniform1i(textureLocation, textureIndex);
+
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     const texture = gl.createTexture();
 
-    gl.activeTexture(gl.TEXTURE0);
+    gl.activeTexture(textureIndex);
 
     gl.bindTexture(gl.TEXTURE_2D, texture);
 
@@ -209,8 +213,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
-    const imageLocation = gl.getUniformLocation(program, 'u_texture');
 
     // uniforms - texture size
 
@@ -231,6 +233,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         // load canvas scale value
         const scalingData = 4;
+
         gl.uniform1f(scalingUniformLocation, scalingData);
 
         // load model, vertices and texture coordinates and indexing
@@ -238,6 +241,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         // vertices coordinates
         gl.bindBuffer(gl.ARRAY_BUFFER, verticesPositionBuffer);
+
         // prettier-ignore
         const verticesPositionData = new Float32Array([
         // 3--0
@@ -249,10 +253,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             -1, -1,  0, // 2
             -1,  1,  0, // 3
         ]);
+
         gl.bufferData(gl.ARRAY_BUFFER, verticesPositionData, gl.STATIC_DRAW);
 
         // texture coordinates
         gl.bindBuffer(gl.ARRAY_BUFFER, verticesTextureBuffer);
+
         // prettier-ignore
         const verticesTextureData = new Float32Array([
         // 3--0
@@ -268,6 +274,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         // vertex indices
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
+
         // prettier-ignore
         const indicesData = new Uint16Array([
         // 3 - - - 0
@@ -278,13 +285,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             3, 2, 0,
             2, 1, 0,
         ]);
+
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicesData, gl.STATIC_DRAW);
 
         // texture
-        gl.activeTexture(gl.TEXTURE0);
+        gl.activeTexture(textureIndex);
+
         const imgData = await loadImageData('/sprite-sheet.png');
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, imgData.width, imgData.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, imgData);
-        gl.uniform1i(imageLocation, 0);
     }
 
     /**
@@ -323,22 +331,20 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     animationSystem.current = 'idle-0';
     spriteSystem.sprite = animationSystem.sprite;
 
-    const movementSystem = movement();
+    const movementSystem = movement({ x: 0, y: 0, z: 0 }, { x: 0.02, y: 0.02, z: 0 }, 0, 0.01);
 
     let lastUpdate = performance.now();
-
-    const pressedKeys = inputHandler;
 
     function update(now: number) {
         const delta = now - lastUpdate;
 
         if (inputHandler.keypress) {
-            if (pressedKeys.right) movementSystem.moveRight(delta);
-            if (pressedKeys.left) movementSystem.moveLeft(delta);
-            if (pressedKeys.up) movementSystem.moveUp(delta);
-            if (pressedKeys.down) movementSystem.moveDown(delta);
-            if (pressedKeys.turnRight) movementSystem.rotateClockWise(delta);
-            if (pressedKeys.turnLeft) movementSystem.rotateCounterClockWise(delta);
+            if (inputHandler.right) movementSystem.moveRight(delta);
+            if (inputHandler.left) movementSystem.moveLeft(delta);
+            if (inputHandler.up) movementSystem.moveUp(delta);
+            if (inputHandler.down) movementSystem.moveDown(delta);
+            if (inputHandler.turnRight) movementSystem.rotateClockWise(delta);
+            if (inputHandler.turnLeft) movementSystem.rotateCounterClockWise(delta);
         }
 
         spriteSystem.sprite = animationSystem.update(delta).sprite;

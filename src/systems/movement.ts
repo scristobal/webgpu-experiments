@@ -1,12 +1,12 @@
 import { m4 } from 'src/helpers/matrix';
 
-function movement() {
+function movement(center: { x: number; y: number; z: number }, speed: { x: number; y: number; z: number }, angle: number, rotationSpeed: number) {
     return {
         _transform: m4().identity,
-        center: { x: 0, y: 0, z: 0 },
-        speed: { x: 0.02, y: 0.02, z: 0 },
-        angle: 0,
-        rotationSpeed: 0.01,
+        center,
+        speed,
+        angle,
+        rotationSpeed,
 
         moveRight(dt: number) {
             this.center.x += this.speed.x * dt;
