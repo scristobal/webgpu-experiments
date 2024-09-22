@@ -331,7 +331,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     animationSystem.current = 'idle-0';
     spriteSystem.sprite = animationSystem.sprite;
 
-    const movementSystem = movement({ x: 0, y: 0, z: 0 }, { x: 0.02, y: 0.02, z: 0 }, 0, 0.01);
+    const movementSystem = movement({ center: { x: 0, y: 0, z: 0 }, speed: { x: 0.02, y: 0.02, z: 0 }, angle: 0, rotationSpeed: 0.01 });
 
     let lastUpdate = performance.now();
 

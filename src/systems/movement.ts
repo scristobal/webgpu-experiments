@@ -1,12 +1,9 @@
 import { m4 } from 'src/helpers/matrix';
 
-function movement(center: { x: number; y: number; z: number }, speed: { x: number; y: number; z: number }, angle: number, rotationSpeed: number) {
+function movement(initial: { center: { x: number; y: number; z: number }; speed: { x: number; y: number; z: number }; angle: number; rotationSpeed: number }) {
     return {
+        ...initial,
         _transform: m4().identity,
-        center,
-        speed,
-        angle,
-        rotationSpeed,
 
         moveRight(dt: number) {
             this.center.x += this.speed.x * dt;
@@ -37,7 +34,7 @@ function movement(center: { x: number; y: number; z: number }, speed: { x: numbe
             this._transform.identity.translate(this.center.x, this.center.y, this.center.z).rotate(0, 0, 1, this.angle);
         },
 
-        get transform() {
+        get transform(): Float32Array {
             return this._transform.data;
         }
     };
