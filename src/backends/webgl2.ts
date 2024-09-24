@@ -244,14 +244,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         // prettier-ignore
         const verticesPositionData = new Float32Array([
-        // 3--0
-        // |  |
-        // 2--1
-        //   x,  y,  z,
-             1,  1,  0, // 0
-             1, -1,  0, // 1
-            -1, -1,  0, // 2
-            -1,  1,  0, // 3
+            // 3--0
+            // |  |
+            // 2--1
+            //   x,  y,  z,
+            1, 1, 0, // 0
+            1, -1, 0, // 1
+            -1, -1, 0, // 2
+            -1, 1, 0, // 3
         ]);
 
         gl.bufferData(gl.ARRAY_BUFFER, verticesPositionData, gl.STATIC_DRAW);
@@ -261,10 +261,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         // prettier-ignore
         const verticesTextureData = new Float32Array([
-        // 3--0
-        // |  |
-        // 2--1
-        //  u, v
+            // 3--0
+            // |  |
+            // 2--1
+            //  u, v
             1, 0,  // 0
             1, 1,  // 1
             0, 1,  // 2
@@ -277,11 +277,11 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         // prettier-ignore
         const indicesData = new Uint16Array([
-        // 3 - - - 0
-        // |     / |
-        // |   /   |
-        // | /     |
-        // 2 - - - 1
+            // 3 - - - 0
+            // |     / |
+            // |   /   |
+            // | /     |
+            // 2 - - - 1
             3, 2, 0,
             2, 1, 0,
         ]);
@@ -305,7 +305,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const spriteSystem = spriteSheet({
         get imgSize(): [number, number] {
-            return [34, 34 * Object.keys(this.sprites).length];
+            return [34, 34 * 7];
         },
         sprites: {
             'look-right': { location: [0, 0], size: [34, 34] },
@@ -331,7 +331,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     animationSystem.current = 'idle-0';
     spriteSystem.sprite = animationSystem.sprite;
 
-    const movementSystem = movement({ center: { x: 0, y: 0, z: 0 }, speed: { x: 0.02, y: 0.02, z: 0 }, angle: 0, rotationSpeed: 0.01 });
+    const movementSystem = movement({
+        center: { x: 0, y: 0, z: 0 },
+        speed: { x: 0.02, y: 0.02, z: 0 },
+        angle: 0,
+        rotationSpeed: 0.01
+    });
 
     let lastUpdate = performance.now();
 
@@ -410,7 +415,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         lastUpdate = performance.now();
     }
 
-    return async function () {
+    return async function() {
         await load();
         gameLoop(performance.now());
     };
