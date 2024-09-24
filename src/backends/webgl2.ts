@@ -244,14 +244,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         // prettier-ignore
         const verticesPositionData = new Float32Array([
-            // 3--0
-            // |  |
-            // 2--1
-            //   x,  y,  z,
-            1, 1, 0, // 0
-            1, -1, 0, // 1
+        // 3--0
+        // |  |
+        // 2--1
+        //   x,  y,  z,
+             1,  1, 0, // 0
+             1, -1, 0, // 1
             -1, -1, 0, // 2
-            -1, 1, 0, // 3
+            -1,  1, 0, // 3
         ]);
 
         gl.bufferData(gl.ARRAY_BUFFER, verticesPositionData, gl.STATIC_DRAW);
@@ -261,10 +261,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         // prettier-ignore
         const verticesTextureData = new Float32Array([
-            // 3--0
-            // |  |
-            // 2--1
-            //  u, v
+        // 3--0
+        // |  |
+        // 2--1
+        //  u, v
             1, 0,  // 0
             1, 1,  // 1
             0, 1,  // 2
@@ -277,13 +277,13 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         // prettier-ignore
         const indicesData = new Uint16Array([
-            // 3 - - - 0
-            // |     / |
-            // |   /   |
-            // | /     |
-            // 2 - - - 1
-            3, 2, 0,
-            2, 1, 0,
+        // 3 - - - 0
+        // | A   / |
+        // |   /   |
+        // | /   B |
+        // 2 - - - 1
+            3, 2, 0, // A
+            2, 1, 0, // B
         ]);
 
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicesData, gl.STATIC_DRAW);
