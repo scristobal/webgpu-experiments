@@ -415,7 +415,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         lastUpdate = performance.now();
     }
 
-    return async function() {
+    return async function () {
         await load();
         gameLoop(performance.now());
     };
