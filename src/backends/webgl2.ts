@@ -1,4 +1,3 @@
-import { animation } from 'src/systems/animation';
 import { inputHandler } from 'src/systems/input';
 import { resizeHandler } from 'src/helpers/resize';
 import { spriteSheet } from 'src/systems/sprites';
@@ -203,9 +202,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const resize = resizeHandler(gl.getParameter(gl.MAX_TEXTURE_SIZE), canvasElement);
 
     const spriteSystem = spriteSheet(animationData);
-    const animationSystem = animation(animationData.animation);
-
-    spriteSystem.sprite = animationSystem.sprite;
 
     const movementSystem = movement({
         center: { x: 0, y: 0, z: 0 },
@@ -231,7 +227,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             if (inputHandler.turnLeft) movementSystem.rotateCounterClockWise(delta);
         }
 
-        spriteSystem.sprite = animationSystem.update(delta).sprite;
+        spriteSystem.sprite = spriteSystem.update(delta).sprite;
     }
 
     // const fb = gl.createFramebuffer();

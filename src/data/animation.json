@@ -76,7 +76,7 @@
             ]
         }
     },
-    "animation": {
+    "frames": {
         "idle-0": {
             "duration": 500,
             "sprite": "look-right",
