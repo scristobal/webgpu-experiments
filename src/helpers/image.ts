@@ -42,7 +42,6 @@ export function getImageDataUsingWebgl(bitmap: ImageBitmap, gl: WebGL2RenderingC
 
 export async function loadImageBitmap(url: string) {
     const response = await fetch(url);
-
     const blob = await response.blob();
 
     return await createImageBitmap(blob, { colorSpaceConversion: 'none' });

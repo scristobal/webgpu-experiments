@@ -1,17 +1,17 @@
 type Sprites = {
-    location: [number, number];
-    size: [number, number];
+    location: number[];
+    size: number[];
 };
 
 type Atlas = {
-    imgSize: [number, number];
+    size: number[];
     sprites: { [n: string]: Sprites };
 };
 
 function spriteSheet(atlas: Atlas) {
     return {
         _atlas: atlas,
-        _imgSize: atlas.imgSize,
+        _imgSize: atlas.size,
         transform: new Float32Array(9),
         _current: '',
 

@@ -1,73 +1,116 @@
 {
     "url": "/sprite-sheet.png",
-    "size": [34, 34],
+    "size": [
+        34,
+        238
+    ],
     "sprites": {
         "look-right": {
-            "location": [0, 0],
-            "size": [34, 34]
+            "location": [
+                0,
+                0
+            ],
+            "size": [
+                34,
+                34
+            ]
         },
         "look-left": {
-            "location": [0, 34],
-            "size": [34, 34]
+            "location": [
+                0,
+                34
+            ],
+            "size": [
+                34,
+                34
+            ]
         },
         "open-mouth": {
-            "location": [0, 68],
-            "size": [34, 34]
+            "location": [
+                0,
+                68
+            ],
+            "size": [
+                34,
+                34
+            ]
         },
         "closed-eyes": {
-            "location": [0, 102],
-            "size": [34, 34]
+            "location": [
+                0,
+                102
+            ],
+            "size": [
+                34,
+                34
+            ]
         },
         "shoulders-down": {
-            "location": [0, 136],
-            "size": [34, 34]
+            "location": [
+                0,
+                136
+            ],
+            "size": [
+                34,
+                34
+            ]
         },
         "stretch-up": {
-            "location": [0, 170],
-            "size": [34, 34]
+            "location": [
+                0,
+                170
+            ],
+            "size": [
+                34,
+                34
+            ]
         },
         "stretch-down": {
-            "location": [0, 204],
-            "size": [34, 34]
+            "location": [
+                0,
+                204
+            ],
+            "size": [
+                34,
+                34
+            ]
         }
     },
-    "animations": [
-        {
-            "idle-0": {
-                "duration": 500,
-                "sprite": "look-right",
-                "next": "idle-1"
-            },
-            "idle-1": {
-                "duration": 500,
-                "sprite": "look-left",
-                "next": "idle-2"
-            },
-            "idle-2": {
-                "duration": 500,
-                "sprite": "open-mouth",
-                "next": "idle-3"
-            },
-            "idle-3": {
-                "duration": 500,
-                "sprite": "closed-eyes",
-                "next": "idle-4"
-            },
-            "idle-4": {
-                "duration": 500,
-                "sprite": "stretch-up",
-                "next": "idle-5"
-            },
-            "idle-5": {
-                "duration": 500,
-                "sprite": "stretch-down",
-                "next": "idle-6"
-            },
-            "idle-6": {
-                "duration": 500,
-                "sprite": "look-right",
-                "next": "idle-0"
-            }
+    "animation": {
+        "idle-0": {
+            "duration": 500,
+            "sprite": "look-right",
+            "next": "idle-1"
+        },
+        "idle-1": {
+            "duration": 500,
+            "sprite": "look-left",
+            "next": "idle-2"
+        },
+        "idle-2": {
+            "duration": 500,
+            "sprite": "open-mouth",
+            "next": "idle-3"
+        },
+        "idle-3": {
+            "duration": 500,
+            "sprite": "closed-eyes",
+            "next": "idle-4"
+        },
+        "idle-4": {
+            "duration": 500,
+            "sprite": "stretch-up",
+            "next": "idle-5"
+        },
+        "idle-5": {
+            "duration": 500,
+            "sprite": "stretch-down",
+            "next": "idle-6"
+        },
+        "idle-6": {
+            "duration": 500,
+            "sprite": "look-right",
+            "next": "idle-0"
         }
-    ]
+    }
 }

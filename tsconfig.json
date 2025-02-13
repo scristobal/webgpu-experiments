@@ -11,7 +11,12 @@
         "incremental": false,
         "isolatedModules": true,
         "jsx": "preserve",
-        "lib": ["dom", "dom.iterable", "esnext", "webworker"],
+        "lib": [
+            "dom",
+            "dom.iterable",
+            "esnext",
+            "webworker"
+        ],
         "module": "esnext",
         "moduleResolution": "node",
         "noEmit": true,
@@ -29,11 +34,23 @@
         "sourceMap": true,
         "strict": true,
         "target": "esnext",
-        "types": ["@webgpu/types"],
+        "types": [
+            "@webgpu/types",
+            "vite/client"
+        ],
         "baseUrl": ".",
-        "paths": { "@src/*": ["src/*"] },
+        "paths": {
+            "@src/*": [
+                "src/*"
+            ]
+        },
         "useDefineForClassFields": false
     },
-    "exclude": ["node_modules", "lib"],
-    "include": ["**/*.ts"]
+    "exclude": [
+        "node_modules",
+        "lib"
+    ],
+    "include": [
+        "**/*.ts"
+    ]
 }
