@@ -20,7 +20,6 @@ function spriteSheet(atlas: Atlas) {
     return {
         _frames: atlas.frames,
         _sprites: atlas.sprites,
-        _atlas: atlas,
         _imgSize: atlas.size,
 
         transform: new Float32Array(9),
