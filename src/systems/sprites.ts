@@ -1,10 +1,8 @@
-
 type Frame = {
     sprite: string;
     duration: number;
     next: string;
-}
-
+};
 
 type Sprite = {
     location: number[];
@@ -12,65 +10,50 @@ type Sprite = {
 };
 
 type Atlas = {
-    url: string,
+    url: string;
     size: number[];
     sprites: { [n: string]: Sprite };
-    frames: { [n: string]: Frame }
+    frames: { [n: string]: Frame };
 };
-
 
 function spriteSheet(atlas: Atlas) {
     return {
         _frames: atlas.frames,
-        _currentSpriteTime: 0,
-        _currentFrame: Object.keys(atlas.frames)[0],
-
-        set current(n: string) {
-            this._currentFrame = n;
-        },
-
-        get sprite() {
-            return this._info.sprite;
-        },
-
-        update(dt: number) {
-            this._currentSpriteTime += dt;
-            if (this._currentSpriteTime > this._info.duration) {
-                this._currentSpriteTime = 0;
-                this._currentFrame = this._info.next;
-            }
-
-            return this;
-        },
-
-        get _info() {
-            return this._frames[this._currentFrame];
-        },
-
+        _sprites: atlas.sprites,
         _atlas: atlas,
         _imgSize: atlas.size,
+
         transform: new Float32Array(9),
-        _current: atlas.frames[Object.keys(atlas.frames)[0]].sprite,
 
-        set sprite(name: string) {
-            if (this._current === name) return;
+        _currentFrameTime: 0,
+        _currentFrameName: Object.keys(atlas.frames)[0],
 
-            this._current = name;
+        update(dt: number) {
+            this._currentFrameTime += dt;
 
-            // prettier-ignore
-            this.transform.set([
-                this._sprite.size[0] / this._imgSize[0], 0, 0,
-                0, this._sprite.size[1] / this._imgSize[1], 0,
-                this._sprite.location[0] / this._imgSize[0], this._sprite.location[1] / this._imgSize[1], 1
-            ]);
+            if (this._currentFrameTime > this._currentFrame.duration) {
+                this._currentFrameTime = this._currentFrame.duration - this._currentFrameTime;
+                this._currentFrameName = this._currentFrame.next;
+
+                // prettier-ignore
+                this.transform.set([
+                    this._currentSprite.size[0] / this._imgSize[0], 0, 0,
+                    0, this._currentSprite.size[1] / this._imgSize[1], 0,
+                    this._currentSprite.location[0] / this._imgSize[0], this._currentSprite.location[1] / this._imgSize[1], 1
+                ]);
+            }
+        },
+
+        get _currentFrame() {
+            return this._frames[this._currentFrameName];
+        },
+
+        get _currentSprite() {
+            return this._sprites[this._frames[this._currentFrameName].sprite];
         },
 
         get size() {
-            return this._sprite.size;
-        },
-
-        get _sprite() {
-            return this._atlas.sprites[this._current];
+            return this._currentSprite.size;
         }
     };
 }

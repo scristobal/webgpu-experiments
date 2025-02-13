@@ -4,10 +4,10 @@ import { spriteSheet } from 'src/systems/sprites';
 import { loadImageData } from 'src/helpers/image';
 import { movement } from 'src/systems/movement';
 
-import vertexShaderCode from 'src/shaders/vertex.glsl?raw'
-import fragmentShaderCode from 'src/shaders/fragment.glsl?raw'
+import vertexShaderCode from 'src/shaders/vertex.glsl?raw';
+import fragmentShaderCode from 'src/shaders/fragment.glsl?raw';
 
-import animationData from 'src/data/animation.json'
+import animationData from 'src/data/animation.json';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
     const gl = canvasElement.getContext('webgl2');
@@ -227,7 +227,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             if (inputHandler.turnLeft) movementSystem.rotateCounterClockWise(delta);
         }
 
-        spriteSystem.sprite = spriteSystem.update(delta).sprite;
+        spriteSystem.update(delta);
     }
 
     // const fb = gl.createFramebuffer();
@@ -290,7 +290,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         lastUpdate = performance.now();
     }
 
-    return async function() {
+    return async function () {
         await load();
         gameLoop(performance.now());
     };
